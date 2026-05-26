@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+:root {
+  --sidebar-bg: #0f0f0f;
+  --sidebar-hover: #1a1a1a;
+  --sidebar-active: #1f1f1f;
+  --sidebar-border: #2a2a2a;
+}
+
+* { box-sizing: border-box; }
+
+body { font-family: var(--font-geist), system-ui, sans-serif; }
+
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }

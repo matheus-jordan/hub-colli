@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Write(C:\\Users\\mathe\\hub-colli\\**)",
+      "Edit(C:\\Users\\mathe\\hub-colli\\**)",
+      "Bash(npm *)",
+      "Bash(npx *)"
+    ]
+  }
+}
