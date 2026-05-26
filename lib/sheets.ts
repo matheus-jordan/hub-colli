@@ -180,11 +180,11 @@ export async function readTransposedMonthly(sheetId: string, sheetName: string):
     const year = rows[yearRowIdx]?.[colIdx] ?? ''
     const monthName = rows[monthRowIdx]?.[colIdx] ?? ''
 
-    // Build period label: "mai/2026" style
-    const d = parseDate(dateStr)
-    const period = d
-      ? d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })
-      : (monthName ? `${monthName}/${year}` : dateStr)
+    // Build period label using month name from sheet ("janeiro/2026")
+    // Avoid parseDate on year-only strings ("2026") which resolve to Jan 1
+    const period = monthName && year
+      ? `${monthName}/${year}`
+      : (dateStr || `col${colIdx}`)
 
     const m = emptyMetrics(period)
 

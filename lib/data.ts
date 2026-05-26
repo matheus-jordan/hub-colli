@@ -5,7 +5,7 @@ import { SHEET_NAMES, STALE_THRESHOLD_DAYS } from './config'
 function getLastDate(rows: Record<string, string>[]): string | null {
   if (rows.length === 0) return null
   // Try common date column names
-  const dateCol = Object.keys(rows[0]).find(k => /^day$|^dia$|^data/i.test(k.trim()))
+  const dateCol = Object.keys(rows[0]).find(k => /^(day|dia|data|date|período|periodo)/i.test(k.trim()))
   if (!dateCol) return null
   const dates = rows.map(r => r[dateCol]).filter(Boolean)
   return dates.length ? dates[dates.length - 1] : null
