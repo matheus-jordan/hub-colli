@@ -67,6 +67,7 @@ export interface ClientSummary {
   previousMonth: MonthlyMetrics | null
   staleData: StaleDataInfo
   lastUpdated: string
+  availablePeriods: string[]
 }
 
 export interface ClientDetail extends ClientSummary {
@@ -100,4 +101,25 @@ export interface AIAnalysis {
   warnings: string[]
   recommendations: string[]
   generatedAt: string
+}
+
+export interface Constraint {
+  id: string
+  clientId: string
+  title: string
+  context: string
+  status: 'active' | 'resolved'
+  deadline: string | null
+  linkedEkyteTaskIds: string[]
+  createdAt: string
+  resolvedAt: string | null
+}
+
+export interface EkyteTask {
+  id: string
+  title: string
+  statusCode: number
+  statusLabel: string
+  projectName: string
+  dueDate?: string
 }

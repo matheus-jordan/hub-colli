@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { StaleAlert } from '@/components/StaleAlert'
 import { MetricsCard } from '@/components/MetricsCard'
 import { TrendChart } from '@/components/TrendChart'
+import { ConstraintsPanel } from '@/components/ConstraintsPanel'
 
 const LINK_LABELS: Record<string, string> = {
   growthPack: 'Growth Pack',
@@ -85,11 +86,16 @@ export default function ClientPage() {
 
   if (!detail) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Carregando cliente...</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            border: '2px solid var(--red)', borderTopColor: 'transparent',
+            animation: 'spin 0.8s linear infinite', margin: '0 auto 12px'
+          }} />
+          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Carregando cliente...</p>
         </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
@@ -98,74 +104,90 @@ export default function ClientPage() {
   const links = Object.entries(client.links).filter(([, v]) => v)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-8 py-4 sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-gray-400 hover:text-gray-600 text-sm">← Voltar</Link>
-          <ClientAvatar name={client.name} color={client.color} size="md" />
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">{client.name}</h1>
-            {client.since && <p className="text-xs text-gray-400">Cliente desde {client.since} · {client.contact && `Contato: ${client.contact}`}</p>}
-          </div>
-          <StatusBadge status={status} />
-          <div className="ml-auto">
-            <button
-              onClick={analyze}
-              disabled={analyzing}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              {analyzing ? (
-                <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Analisando...</>
-              ) : (
-                <><span>✦</span> Analisar com IA</>
-              )}
-            </button>
-          </div>
+      <div style={{
+        background: 'rgba(8,8,8,0.85)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid var(--border)', padding: '14px 32px',
+        position: 'sticky', top: 0, zIndex: 20, display: 'flex', alignItems: 'center', gap: 16,
+      }}>
+        <Link href="/" style={{ color: 'var(--text-muted)', fontSize: 13, textDecoration: 'none' }}>← Voltar</Link>
+        <ClientAvatar name={client.name} color={client.color} size="md" />
+        <div style={{ flex: 1 }}>
+          <p style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>{client.name}</p>
+          {client.since && (
+            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Cliente desde {client.since}{client.contact ? ` · ${client.contact}` : ''}
+            </p>
+          )}
         </div>
+        <StatusBadge status={status} />
+        <button
+          onClick={analyze}
+          disabled={analyzing}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
+            color: 'var(--text)', fontSize: 13, fontWeight: 500, padding: '8px 16px',
+            borderRadius: 10, cursor: 'pointer', transition: 'background 0.2s',
+            opacity: analyzing ? 0.5 : 1,
+          }}
+        >
+          {analyzing ? (
+            <><span style={{ width: 14, height: 14, borderRadius: '50%', border: '1.5px solid currentColor', borderTopColor: 'transparent', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} /> Analisando...</>
+          ) : (
+            <><span style={{ color: 'var(--red)' }}>✦</span> Analisar com IA</>
+          )}
+        </button>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
 
-      <div className="px-8 py-6 space-y-6 max-w-7xl mx-auto">
+      <div style={{ padding: '28px 32px', maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
         {/* Stale alert */}
         <StaleAlert stale={staleData} />
 
+        {/* Constraints — sempre no topo */}
+        <ConstraintsPanel clientId={id} />
+
         {/* AI Analysis */}
         {analysis && (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-blue-600">✦</span>
-              <h3 className="font-semibold text-blue-900 text-sm">Análise IA · {new Date(analysis.generatedAt).toLocaleString('pt-BR')}</h3>
+          <div className="glass" style={{ padding: 20, borderColor: 'rgba(255,59,59,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ color: 'var(--red)' }}>✦</span>
+              <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
+                Análise IA · {new Date(analysis.generatedAt).toLocaleString('pt-BR')}
+              </p>
             </div>
-            <p className="text-sm text-gray-700 mb-4">{analysis.summary}</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 16, lineHeight: 1.6 }}>{analysis.summary}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
               {analysis.highlights.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-green-700 mb-2">✓ Destaques</p>
-                  {analysis.highlights.map((h, i) => <p key={i} className="text-xs text-gray-600 mb-1">• {h}</p>)}
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--green)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>✓ Destaques</p>
+                  {analysis.highlights.map((h, i) => <p key={i} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 4 }}>• {h}</p>)}
                 </div>
               )}
               {analysis.warnings.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-red-600 mb-2">⚠ Alertas</p>
-                  {analysis.warnings.map((w, i) => <p key={i} className="text-xs text-gray-600 mb-1">• {w}</p>)}
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--red)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⚠ Alertas</p>
+                  {analysis.warnings.map((w, i) => <p key={i} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 4 }}>• {w}</p>)}
                 </div>
               )}
               {analysis.recommendations.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-blue-700 mb-2">→ Recomendações</p>
-                  {analysis.recommendations.map((r, i) => <p key={i} className="text-xs text-gray-600 mb-1">• {r}</p>)}
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'rgba(100,160,255,1)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>→ Recomendações</p>
+                  {analysis.recommendations.map((r, i) => <p key={i} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 4 }}>• {r}</p>)}
                 </div>
               )}
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* KPI cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 24 }}>
+          {/* Main */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* KPIs */}
             {currentMonth && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                 <MetricsCard label="Investimento" current={currentMonth.investment} previous={previousMonth?.investment} />
                 <MetricsCard label="Leads" current={currentMonth.leads} previous={previousMonth?.leads} />
                 <MetricsCard label="ROAS" current={currentMonth.roas} previous={previousMonth?.roas} highlight />
@@ -174,56 +196,57 @@ export default function ClientPage() {
             )}
 
             {/* Tabs */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-              <div className="flex border-b border-gray-100 px-1 pt-1">
+            <div className="glass" style={{ overflow: 'hidden' }}>
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 4px' }}>
                 {([
                   { key: 'mensal', label: 'Mensal' },
                   { key: 'semanal', label: 'Semanal' },
-                  { key: 'tasks', label: `Tarefas ${tasks.filter(t => t.status === 'pending').length > 0 ? `(${tasks.filter(t => t.status === 'pending').length})` : ''}` },
+                  { key: 'tasks', label: `Tarefas${tasks.filter(t => t.status === 'pending').length > 0 ? ` (${tasks.filter(t => t.status === 'pending').length})` : ''}` },
                   { key: 'historico', label: 'Histórico' },
                 ] as const).map(t => (
                   <button
                     key={t.key}
                     onClick={() => setTab(t.key)}
-                    className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                      tab === t.key
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
+                    style={{
+                      padding: '12px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      background: 'none', border: 'none', borderBottom: `2px solid ${tab === t.key ? 'var(--red)' : 'transparent'}`,
+                      color: tab === t.key ? 'var(--text)' : 'var(--text-muted)', marginBottom: -1,
+                      transition: 'color 0.15s',
+                    }}
                   >
                     {t.label}
                   </button>
                 ))}
               </div>
 
-              <div className="p-5">
-                {/* Monthly tab */}
+              <div style={{ padding: 20 }}>
+                {/* Monthly */}
                 {tab === 'mensal' && (
-                  <div className="space-y-5">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                     {monthlyHistory.length > 0 ? (
                       <>
-                        <TrendChart data={monthlyHistory} metric="roas" color="#3b82f6" label="ROAS mensal" />
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
+                        <TrendChart data={monthlyHistory} metric="roas" color="#ff3b3b" label="ROAS mensal" />
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                             <thead>
-                              <tr className="border-b border-gray-100">
-                                {['Mês', 'Investimento', 'Leads', 'ROAS', 'CPL', 'Vendas', 'Faturamento'].map(h => (
-                                  <th key={h} className={`py-2 px-2 font-semibold text-gray-500 ${h === 'Mês' ? 'text-left' : 'text-right'}`}>{h}</th>
+                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                {['Mês', 'Investimento', 'Leads', 'ROAS', 'CPL', 'Vendas', 'Faturamento'].map((h, i) => (
+                                  <th key={h} style={{ padding: '8px', fontWeight: 600, color: 'var(--text-muted)', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
                               {monthlyHistory.map((m, i) => (
-                                <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                                  <td className="py-2 px-2 text-gray-700 font-medium">{m.period}</td>
-                                  <td className="py-2 px-2 text-right text-gray-700">{m.investment.formatted}</td>
-                                  <td className="py-2 px-2 text-right text-gray-700">{m.leads.formatted}</td>
-                                  <td className={`py-2 px-2 text-right font-medium ${(m.roas.value ?? 0) >= 1.5 ? 'text-green-600' : (m.roas.value ?? 0) >= 1 ? 'text-yellow-600' : 'text-red-500'}`}>
+                                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                  <td style={{ padding: '8px', color: 'var(--text)', fontWeight: 500 }}>{m.period}</td>
+                                  <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{m.investment.formatted}</td>
+                                  <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{m.leads.formatted}</td>
+                                  <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600, color: (m.roas.value ?? 0) >= 1.5 ? 'var(--green)' : (m.roas.value ?? 0) >= 1 ? 'var(--yellow)' : 'var(--red)' }}>
                                     {m.roas.formatted}
                                   </td>
-                                  <td className="py-2 px-2 text-right text-gray-700">{m.cpl.formatted}</td>
-                                  <td className="py-2 px-2 text-right text-gray-700">{m.sales.formatted}</td>
-                                  <td className="py-2 px-2 text-right text-gray-700">{m.revenue.formatted}</td>
+                                  <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{m.cpl.formatted}</td>
+                                  <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{m.sales.formatted}</td>
+                                  <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{m.revenue.formatted}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -231,68 +254,91 @@ export default function ClientPage() {
                         </div>
                       </>
                     ) : (
-                      <p className="text-sm text-gray-400 text-center py-8">Sem dados mensais disponíveis</p>
+                      <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0', fontSize: 13 }}>Sem dados mensais disponíveis</p>
                     )}
                   </div>
                 )}
 
-                {/* Weekly tab */}
+                {/* Weekly */}
                 {tab === 'semanal' && (
-                  <div className="space-y-4">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {weeklyHistory.length > 0 ? (
                       <>
-                        <TrendChart data={weeklyHistory.map(w => ({ ...w, investment: w.investment, leads: w.leads, mqls: { value: null, formatted: '—' }, sqls: { value: null, formatted: '—' }, sales: { value: null, formatted: '—' }, revenue: { value: null, formatted: '—' }, cpa: w.cpa, roas: w.roas, cpl: { value: null, formatted: '—' } }))} metric="leads" color="#8b5cf6" label="Leads semanais" />
-                        <table className="w-full text-xs">
+                        <TrendChart
+                          data={weeklyHistory.map(w => ({ ...w, mqls: { value: null, formatted: '—' }, sqls: { value: null, formatted: '—' }, sales: { value: null, formatted: '—' }, revenue: { value: null, formatted: '—' }, cpl: { value: null, formatted: '—' } }))}
+                          metric="leads" color="#a78bfa" label="Leads semanais"
+                        />
+                        <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                           <thead>
-                            <tr className="border-b border-gray-100">
-                              {['Semana', 'Investimento', 'Leads', 'MQLs', 'ROAS', 'CPA'].map(h => (
-                                <th key={h} className={`py-2 px-2 font-semibold text-gray-500 ${h === 'Semana' ? 'text-left' : 'text-right'}`}>{h}</th>
+                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                              {['Semana', 'Investimento', 'Leads', 'MQLs', 'ROAS', 'CPA'].map((h, i) => (
+                                <th key={h} style={{ padding: '8px', fontWeight: 600, color: 'var(--text-muted)', textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
                             {weeklyHistory.map((w, i) => (
-                              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                                <td className="py-2 px-2 text-gray-700 font-medium">{w.period}</td>
-                                <td className="py-2 px-2 text-right text-gray-700">{w.investment.formatted}</td>
-                                <td className="py-2 px-2 text-right text-gray-700">{w.leads.formatted}</td>
-                                <td className="py-2 px-2 text-right text-gray-700">{w.mqls.formatted}</td>
-                                <td className="py-2 px-2 text-right font-medium text-blue-600">{w.roas.formatted}</td>
-                                <td className="py-2 px-2 text-right text-gray-700">{w.cpa.formatted}</td>
+                              <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                <td style={{ padding: '8px', color: 'var(--text)', fontWeight: 500 }}>{w.period}</td>
+                                <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{w.investment.formatted}</td>
+                                <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{w.leads.formatted}</td>
+                                <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{w.mqls.formatted}</td>
+                                <td style={{ padding: '8px', textAlign: 'right', fontWeight: 600, color: 'var(--text)' }}>{w.roas.formatted}</td>
+                                <td style={{ padding: '8px', textAlign: 'right', color: 'var(--text-muted)' }}>{w.cpa.formatted}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </>
                     ) : (
-                      <p className="text-sm text-gray-400 text-center py-8">Sem dados semanais disponíveis</p>
+                      <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 0', fontSize: 13 }}>Sem dados semanais disponíveis</p>
                     )}
                   </div>
                 )}
 
-                {/* Tasks tab */}
+                {/* Tasks */}
                 {tab === 'tasks' && (
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
                       <input
                         value={newTask}
                         onChange={e => setNewTask(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && addTask()}
                         placeholder="Nova tarefa..."
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                        className="input-dark"
+                        style={{ flex: 1, padding: '9px 14px', fontSize: 13 }}
                       />
-                      <button onClick={addTask} className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700">
-                        Adicionar
-                      </button>
+                      <button onClick={addTask} className="btn-ghost">Adicionar</button>
                     </div>
                     {tasks.length === 0 ? (
-                      <p className="text-sm text-gray-400 text-center py-6">Nenhuma tarefa</p>
+                      <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0', fontSize: 13 }}>Nenhuma tarefa</p>
                     ) : (
                       tasks.map(t => (
-                        <div key={t.id} className={`flex items-center gap-3 p-3 rounded-lg border ${t.status === 'done' ? 'bg-gray-50 border-gray-100' : 'bg-white border-gray-200'}`}>
-                          <button onClick={() => toggleTask(t.id, t.status)} className={`w-4 h-4 rounded border-2 shrink-0 ${t.status === 'done' ? 'bg-green-500 border-green-500' : 'border-gray-300'}`} />
-                          <span className={`text-sm flex-1 ${t.status === 'done' ? 'line-through text-gray-400' : 'text-gray-700'}`}>{t.title}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${t.priority === 'high' ? 'bg-red-100 text-red-600' : t.priority === 'medium' ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-500'}`}>
+                        <div key={t.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                          borderRadius: 10, border: '1px solid var(--border)',
+                          background: t.status === 'done' ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
+                        }}>
+                          <button
+                            onClick={() => toggleTask(t.id, t.status)}
+                            style={{
+                              width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
+                              border: `1.5px solid ${t.status === 'done' ? 'var(--green)' : 'var(--border-strong)'}`,
+                              background: t.status === 'done' ? 'var(--green)' : 'transparent',
+                              color: '#fff', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}
+                          >
+                            {t.status === 'done' ? '✓' : ''}
+                          </button>
+                          <span style={{ flex: 1, fontSize: 13, color: t.status === 'done' ? 'var(--text-dim)' : 'var(--text)', textDecoration: t.status === 'done' ? 'line-through' : 'none' }}>
+                            {t.title}
+                          </span>
+                          <span style={{
+                            fontSize: 10, padding: '2px 8px', borderRadius: 20,
+                            background: t.priority === 'high' ? 'rgba(255,59,59,0.15)' : t.priority === 'medium' ? 'rgba(251,191,36,0.1)' : 'rgba(255,255,255,0.05)',
+                            color: t.priority === 'high' ? 'var(--red)' : t.priority === 'medium' ? 'var(--yellow)' : 'var(--text-muted)',
+                            border: `1px solid ${t.priority === 'high' ? 'var(--red-border)' : 'var(--border)'}`,
+                          }}>
                             {t.priority}
                           </span>
                         </div>
@@ -301,31 +347,30 @@ export default function ClientPage() {
                   </div>
                 )}
 
-                {/* History tab */}
+                {/* History */}
                 {tab === 'historico' && (
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
                       <input
                         value={newNote}
                         onChange={e => setNewNote(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && addNote()}
                         placeholder="Registrar contato ou observação..."
-                        className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                        className="input-dark"
+                        style={{ flex: 1, padding: '9px 14px', fontSize: 13 }}
                       />
-                      <button onClick={addNote} className="bg-gray-700 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-800">
-                        Registrar
-                      </button>
+                      <button onClick={addNote} className="btn-ghost">Registrar</button>
                     </div>
                     {history.length === 0 ? (
-                      <p className="text-sm text-gray-400 text-center py-6">Nenhum registro</p>
+                      <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '24px 0', fontSize: 13 }}>Nenhum registro</p>
                     ) : (
                       history.map(h => (
-                        <div key={h.id} className="p-3 rounded-lg border border-gray-100 bg-white">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs text-gray-400">{new Date(h.date).toLocaleDateString('pt-BR')}</span>
-                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{h.type}</span>
+                        <div key={h.id} style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}>
+                          <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(h.date).toLocaleDateString('pt-BR')}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-dim)', background: 'rgba(255,255,255,0.05)', padding: '0 6px', borderRadius: 10 }}>{h.type}</span>
                           </div>
-                          <p className="text-sm text-gray-700">{h.summary}</p>
+                          <p style={{ fontSize: 13, color: 'var(--text)' }}>{h.summary}</p>
                         </div>
                       ))
                     )}
@@ -336,45 +381,62 @@ export default function ClientPage() {
           </div>
 
           {/* Right sidebar */}
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Links */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Links rápidos</h3>
+            <div className="glass" style={{ padding: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                Links rápidos
+              </p>
               {links.length > 0 ? (
-                <div className="space-y-1.5">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {links.map(([key, url]) => (
                     <a
                       key={key}
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between p-2.5 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all group"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '9px 12px', borderRadius: 10, textDecoration: 'none',
+                        border: '1px solid transparent', transition: 'all 0.15s',
+                        color: 'var(--text)',
+                      }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLElement).style.background = 'var(--surface-hover)'
+                        ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLElement).style.background = 'transparent'
+                        ;(e.currentTarget as HTMLElement).style.borderColor = 'transparent'
+                      }}
                     >
-                      <span className="text-sm text-gray-700">{LINK_LABELS[key] ?? key}</span>
-                      <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">Abrir ↗</span>
+                      <span style={{ fontSize: 13 }}>{LINK_LABELS[key] ?? key}</span>
+                      <span style={{ fontSize: 11, color: 'var(--red)' }}>↗</span>
                     </a>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">Nenhum link configurado</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>Nenhum link configurado</p>
               )}
             </div>
 
             {/* Data freshness */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">Atualização dos dados</h3>
-              <div className="space-y-2">
+            <div className="glass" style={{ padding: 16 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                Atualização dos dados
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
                   { label: 'Meta Ads', info: staleData.meta },
                   { label: 'Google Ads', info: staleData.google },
                 ].map(({ label, info }) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <span className="text-xs text-gray-600">{label}</span>
-                    <div className="text-right">
-                      <p className={`text-xs font-medium ${info.isStale ? 'text-red-600' : 'text-green-600'}`}>
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: info.isStale ? 'var(--red)' : 'var(--green)' }}>
                         {info.isStale ? `⚠ ${info.daysOld}d atrás` : `✓ ${info.daysOld === 0 ? 'hoje' : `${info.daysOld}d atrás`}`}
                       </p>
-                      {info.lastDate && <p className="text-xs text-gray-400">{info.lastDate}</p>}
+                      {info.lastDate && <p style={{ fontSize: 11, color: 'var(--text-dim)' }}>{info.lastDate}</p>}
                     </div>
                   </div>
                 ))}

@@ -1,16 +1,151 @@
 @import "tailwindcss";
 
 :root {
-  --sidebar-bg: #0f0f0f;
-  --sidebar-hover: #1a1a1a;
-  --sidebar-active: #1f1f1f;
-  --sidebar-border: #2a2a2a;
+  --bg: #080808;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --text: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --text-dim: rgba(255, 255, 255, 0.25);
+  --red: #ff3b3b;
+  --red-glow: rgba(255, 59, 59, 0.35);
+  --red-surface: rgba(255, 59, 59, 0.08);
+  --red-border: rgba(255, 59, 59, 0.3);
+  --green: #34d399;
+  --yellow: #fbbf24;
+  --sidebar-bg: #060606;
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --sidebar-active: rgba(255, 255, 255, 0.08);
+  --sidebar-border: rgba(255, 255, 255, 0.06);
 }
 
 * { box-sizing: border-box; }
 
-body { font-family: var(--font-geist), system-ui, sans-serif; }
+body {
+  font-family: var(--font-geist), system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
 
+/* Glass card */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.glass-hover {
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.glass-hover:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+/* Neon red constraint card */
+.constraint-active {
+  background: var(--red-surface);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--red-border);
+  border-radius: 20px;
+  box-shadow:
+    0 0 40px rgba(255, 59, 59, 0.12),
+    0 0 80px rgba(255, 59, 59, 0.05),
+    inset 0 1px 0 rgba(255, 59, 59, 0.1);
+}
+
+.neon-text {
+  color: var(--red);
+  text-shadow: 0 0 20px rgba(255, 59, 59, 0.6), 0 0 40px rgba(255, 59, 59, 0.3);
+}
+
+.neon-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red-glow), 0 0 16px var(--red-glow);
+  animation: pulse-neon 2s ease-in-out infinite;
+}
+
+@keyframes pulse-neon {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--red-glow), 0 0 16px var(--red-glow); }
+  50% { opacity: 0.7; box-shadow: 0 0 4px var(--red-glow); }
+}
+
+/* Scrollbars */
 .scrollbar-thin::-webkit-scrollbar { width: 4px; }
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+/* Input dark */
+.input-dark {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.input-dark::placeholder { color: var(--text-dim); }
+.input-dark:focus {
+  border-color: rgba(255,255,255,0.25);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+}
+.input-dark-red:focus {
+  border-color: var(--red-border);
+  box-shadow: 0 0 0 3px rgba(255,59,59,0.08);
+}
+
+/* Btn red neon */
+.btn-neon {
+  background: rgba(255, 59, 59, 0.15);
+  border: 1px solid var(--red-border);
+  color: var(--red);
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.btn-neon:hover {
+  background: rgba(255, 59, 59, 0.25);
+  box-shadow: 0 0 16px rgba(255, 59, 59, 0.2);
+}
+
+/* Btn ghost */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.btn-ghost:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}

@@ -19,7 +19,7 @@ function calcStatus(stale: StaleDataInfo, roasValue: number | null): ClientStatu
   return 'ok'
 }
 
-export async function getClientSummary(client: Client): Promise<ClientSummary> {
+export async function getClientSummary(client: Client, selectedPeriod?: string): Promise<ClientSummary> {
   const [monthlyMetrics, metaRows, googleRows] = await Promise.all([
     readTransposedMonthly(client.sheetId, SHEET_NAMES.MONTHLY),
     readSheet(client.sheetId, SHEET_NAMES.META_RAW),
@@ -42,11 +42,18 @@ export async function getClientSummary(client: Client): Promise<ClientSummary> {
     },
   }
 
-  const currentMonth = monthlyMetrics[0] ?? null
-  const previousMonth = monthlyMetrics[1] ?? null
+  const availablePeriods = monthlyMetrics.map(m => m.period)
+
+  const selectedIdx = selectedPeriod
+    ? monthlyMetrics.findIndex(m => m.period === selectedPeriod)
+    : -1
+  const effectiveIdx = selectedIdx >= 0 ? selectedIdx : 0
+
+  const currentMonth = monthlyMetrics[effectiveIdx] ?? null
+  const previousMonth = monthlyMetrics[effectiveIdx + 1] ?? null
   const status = calcStatus(staleData, currentMonth?.roas.value ?? null)
 
-  return { client, status, currentMonth, previousMonth, staleData, lastUpdated: new Date().toISOString() }
+  return { client, status, currentMonth, previousMonth, staleData, lastUpdated: new Date().toISOString(), availablePeriods }
 }
 
 export async function getClientDetail(client: Client): Promise<ClientDetail> {
