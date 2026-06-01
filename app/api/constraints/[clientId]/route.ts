@@ -20,6 +20,7 @@ export async function POST(req: Request, { params }: Ctx) {
     status: 'active',
     deadline: body.deadline ?? null,
     linkedEkyteTaskIds: body.linkedEkyteTaskIds ?? [],
+    tasks: body.tasks ?? [],
     createdAt: new Date().toISOString(),
     resolvedAt: null,
   }

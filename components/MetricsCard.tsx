@@ -10,8 +10,7 @@ interface Props {
 
 function trend(curr: number | null, prev: number | null) {
   if (curr === null || prev === null || prev === 0) return null
-  const pct = ((curr - prev) / prev) * 100
-  return pct
+  return ((curr - prev) / prev) * 100
 }
 
 export function MetricsCard({ label, current, previous, highlight }: Props) {
@@ -20,13 +19,22 @@ export function MetricsCard({ label, current, previous, highlight }: Props) {
   const down = pct !== null && pct < 0
 
   return (
-    <div className={`rounded-xl p-4 border ${highlight ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-white'}`}>
-      <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{label}</p>
-      <p className={`text-xl font-bold ${highlight ? 'text-blue-700' : 'text-gray-900'}`}>
+    <div style={{
+      borderRadius: 14,
+      padding: '16px 18px',
+      background: highlight ? 'rgba(255,59,59,0.08)' : 'rgba(255,255,255,0.04)',
+      border: `1px solid ${highlight ? 'rgba(255,59,59,0.35)' : 'rgba(255,255,255,0.08)'}`,
+      backdropFilter: 'blur(20px)',
+      boxShadow: highlight ? '0 0 24px rgba(255,59,59,0.1)' : 'none',
+    }}>
+      <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 6 }}>
+        {label}
+      </p>
+      <p style={{ fontSize: 22, fontWeight: 800, color: highlight ? 'var(--red)' : 'var(--text)', lineHeight: 1 }}>
         {current.formatted}
       </p>
       {pct !== null && (
-        <p className={`text-xs mt-1 font-medium ${up ? 'text-green-600' : down ? 'text-red-500' : 'text-gray-400'}`}>
+        <p style={{ fontSize: 11, marginTop: 6, fontWeight: 600, color: up ? 'var(--green)' : down ? 'var(--red)' : 'var(--text-muted)' }}>
           {up ? '▲' : down ? '▼' : '–'} {Math.abs(pct).toFixed(1)}% vs mês anterior
         </p>
       )}

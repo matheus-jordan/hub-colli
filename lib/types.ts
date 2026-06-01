@@ -103,6 +103,13 @@ export interface AIAnalysis {
   generatedAt: string
 }
 
+export interface ConstraintTask {
+  id: string
+  title: string
+  done: boolean
+  uploadedToEkyte: boolean
+}
+
 export interface Constraint {
   id: string
   clientId: string
@@ -111,6 +118,7 @@ export interface Constraint {
   status: 'active' | 'resolved'
   deadline: string | null
   linkedEkyteTaskIds: string[]
+  tasks: ConstraintTask[]
   createdAt: string
   resolvedAt: string | null
 }

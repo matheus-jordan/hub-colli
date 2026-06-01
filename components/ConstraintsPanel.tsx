@@ -1,14 +1,14 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
-import { Constraint, EkyteTask } from '@/lib/types'
+import { Constraint, ConstraintTask, EkyteTask } from '@/lib/types'
 
 interface Props { clientId: string }
 
 const STATUS_COLOR: Record<number, string> = {
-  10: '#34d399',  // ativo
-  20: '#fbbf24',  // pausado
-  30: 'rgba(255,255,255,0.3)',  // concluído
-  40: 'rgba(255,255,255,0.2)',  // cancelado
+  10: '#34d399',
+  20: '#fbbf24',
+  30: 'rgba(255,255,255,0.3)',
+  40: 'rgba(255,255,255,0.2)',
 }
 
 function deadlineLabel(d: string | null): { text: string; urgent: boolean } | null {
@@ -19,6 +19,157 @@ function deadlineLabel(d: string | null): { text: string; urgent: boolean } | nu
   if (days <= 3) return { text: `${days}d restantes`, urgent: true }
   return { text: new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), urgent: false }
 }
+
+// ── Task checklist inside a constraint ──────────────────────────────────────
+
+function TaskChecklist({ constraint, clientId, onUpdate }: {
+  constraint: Constraint
+  clientId: string
+  onUpdate: (updated: Constraint) => void
+}) {
+  const [newTitle, setNewTitle] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  async function patch(tasks: ConstraintTask[]) {
+    const res = await fetch(`/api/constraints/${clientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: constraint.id, tasks }),
+    })
+    onUpdate(await res.json())
+  }
+
+  async function addTask() {
+    if (!newTitle.trim()) return
+    const task: ConstraintTask = {
+      id: crypto.randomUUID(),
+      title: newTitle.trim(),
+      done: false,
+      uploadedToEkyte: false,
+    }
+    await patch([...constraint.tasks, task])
+    setNewTitle('')
+    setAdding(false)
+  }
+
+  async function toggleDone(task: ConstraintTask) {
+    const updated = constraint.tasks.map(t =>
+      t.id === task.id ? { ...t, done: !t.done, uploadedToEkyte: !t.done ? t.uploadedToEkyte : false } : t
+    )
+    await patch(updated)
+  }
+
+  async function toggleEkyte(task: ConstraintTask) {
+    const updated = constraint.tasks.map(t =>
+      t.id === task.id ? { ...t, uploadedToEkyte: !t.uploadedToEkyte } : t
+    )
+    await patch(updated)
+  }
+
+  const pending = constraint.tasks.filter(t => !t.done)
+  const done = constraint.tasks.filter(t => t.done)
+
+  return (
+    <div style={{ paddingLeft: 20, marginTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          Tarefas da restrição {pending.length > 0 && <span style={{ color: 'var(--red)', marginLeft: 4 }}>({pending.length} abertas)</span>}
+        </p>
+        <button onClick={() => setAdding(a => !a)} className="btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }}>
+          + Tarefa
+        </button>
+      </div>
+
+      {adding && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+          <input
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addTask()}
+            placeholder="Descreva a tarefa..."
+            autoFocus
+            className="input-dark input-dark-red"
+            style={{ flex: 1, padding: '7px 12px', fontSize: 12 }}
+          />
+          <button onClick={addTask} className="btn-neon" style={{ fontSize: 11, padding: '4px 12px' }}>Adicionar</button>
+          <button onClick={() => setAdding(false)} className="btn-ghost" style={{ fontSize: 11, padding: '4px 10px' }}>×</button>
+        </div>
+      )}
+
+      {constraint.tasks.length === 0 && !adding && (
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', paddingBottom: 4 }}>Nenhuma tarefa. Clique em "+ Tarefa" para adicionar.</p>
+      )}
+
+      {/* Pending tasks */}
+      {pending.map(task => (
+        <div key={task.id} style={{
+          display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+          borderRadius: 10, marginBottom: 4,
+          background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+        }}>
+          {/* Done checkbox */}
+          <button
+            onClick={() => toggleDone(task)}
+            title="Marcar como feito"
+            style={{
+              width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer',
+              border: '1.5px solid var(--border-strong)', background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}
+          />
+          <span style={{ flex: 1, fontSize: 12, color: 'var(--text)' }}>{task.title}</span>
+
+          {/* eKyte checkbox */}
+          <button
+            onClick={() => toggleEkyte(task)}
+            title={task.uploadedToEkyte ? 'Remover marcação eKyte' : 'Marcar como subido no eKyte'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
+              background: task.uploadedToEkyte ? 'rgba(52,211,153,0.1)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${task.uploadedToEkyte ? 'rgba(52,211,153,0.3)' : 'var(--border)'}`,
+              borderRadius: 8, padding: '3px 9px', transition: 'all 0.15s',
+            }}
+          >
+            <span style={{
+              width: 12, height: 12, borderRadius: 3, flexShrink: 0,
+              border: `1.5px solid ${task.uploadedToEkyte ? '#34d399' : 'var(--border-strong)'}`,
+              background: task.uploadedToEkyte ? '#34d399' : 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: '#000'
+            }}>
+              {task.uploadedToEkyte ? '✓' : ''}
+            </span>
+            <span style={{ fontSize: 10, color: task.uploadedToEkyte ? '#34d399' : 'var(--text-dim)', fontWeight: 600 }}>
+              eKyte
+            </span>
+          </button>
+        </div>
+      ))}
+
+      {/* Done tasks */}
+      {done.map(task => (
+        <div key={task.id} style={{
+          display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px',
+          borderRadius: 10, marginBottom: 4, opacity: 0.45,
+        }}>
+          <button
+            onClick={() => toggleDone(task)}
+            title="Reabrir"
+            style={{
+              width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer',
+              border: '1.5px solid var(--green)', background: 'var(--green)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, color: '#000', fontWeight: 700,
+            }}
+          >✓</button>
+          <span style={{ flex: 1, fontSize: 12, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{task.title}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Modal ───────────────────────────────────────────────────────────────────
 
 interface ModalProps {
   clientId: string
@@ -47,16 +198,15 @@ function ConstraintModal({ clientId, initial, ekyteTasks, ekyteLoading, onFetchE
     const method = initial ? 'PATCH' : 'POST'
     const body = initial
       ? { id: initial.id, title, context, deadline: deadline || null, linkedEkyteTaskIds: linked }
-      : { title, context, deadline: deadline || null, linkedEkyteTaskIds: linked }
+      : { title, context, deadline: deadline || null, linkedEkyteTaskIds: linked, tasks: [] }
 
     const res = await fetch(`/api/constraints/${clientId}`, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    const saved = await res.json()
+    onSave(await res.json())
     setSaving(false)
-    onSave(saved)
   }
 
   return (
@@ -111,7 +261,6 @@ function ConstraintModal({ clientId, initial, ekyteTasks, ekyteLoading, onFetchE
             />
           </div>
 
-          {/* eKyte task linker */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -141,7 +290,8 @@ function ConstraintModal({ clientId, initial, ekyteTasks, ekyteLoading, onFetchE
                       }}
                     >
                       <span style={{
-                        width: 16, height: 16, borderRadius: 4, border: `1.5px solid ${sel ? 'var(--red)' : 'var(--border-strong)'}`,
+                        width: 16, height: 16, borderRadius: 4,
+                        border: `1.5px solid ${sel ? 'var(--red)' : 'var(--border-strong)'}`,
                         background: sel ? 'var(--red)' : 'transparent', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff'
                       }}>
@@ -163,11 +313,9 @@ function ConstraintModal({ clientId, initial, ekyteTasks, ekyteLoading, onFetchE
                   )
                 })}
               </div>
-            ) : ekyteLoading ? (
-              <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '10px 0' }}>Buscando tasks do eKyte...</p>
             ) : (
               <p style={{ fontSize: 12, color: 'var(--text-dim)', padding: '8px 0' }}>
-                Clique em "Buscar tasks" para carregar as tasks do eKyte deste cliente.
+                {ekyteLoading ? 'Buscando tasks do eKyte...' : 'Clique em "Buscar tasks" para carregar as tasks deste cliente.'}
               </p>
             )}
           </div>
@@ -183,6 +331,8 @@ function ConstraintModal({ clientId, initial, ekyteTasks, ekyteLoading, onFetchE
     </div>
   )
 }
+
+// ── Main panel ──────────────────────────────────────────────────────────────
 
 export function ConstraintsPanel({ clientId }: Props) {
   const [constraints, setConstraints] = useState<Constraint[]>([])
@@ -225,40 +375,52 @@ export function ConstraintsPanel({ clientId }: Props) {
     })
   }
 
+  function onTaskUpdate(updated: Constraint) {
+    setConstraints(prev => prev.map(c => c.id === updated.id ? updated : c))
+  }
+
   const active = constraints.filter(c => c.status === 'active')
   const resolved = constraints.filter(c => c.status === 'resolved')
 
   return (
     <>
-      {/* Active constraints */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {active.length === 0 ? (
           <div className="constraint-active" style={{ padding: '32px 28px', textAlign: 'center' }}>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
               Nenhuma restrição ativa — defina o próximo gargalo do projeto.
             </p>
-            <button onClick={() => setModal('new')} className="btn-neon">
-              + Definir restrição
-            </button>
+            <button onClick={() => setModal('new')} className="btn-neon">+ Definir restrição</button>
           </div>
         ) : (
           active.map(c => {
             const dl = deadlineLabel(c.deadline)
             const linked = ekyteTasks.filter(t => c.linkedEkyteTaskIds.includes(t.id))
+            const pendingTasks = (c.tasks ?? []).filter(t => !t.done).length
+            const totalTasks = (c.tasks ?? []).length
+
             return (
               <div key={c.id} className="constraint-active" style={{ padding: '24px 28px' }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
-                  <div style={{ paddingTop: 3 }}>
-                    <div className="neon-dot" />
-                  </div>
+                  <div style={{ paddingTop: 4 }}><div className="neon-dot" /></div>
                   <div style={{ flex: 1 }}>
                     <p style={{ fontSize: 10, color: 'var(--red)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
                       Restrição Principal
                     </p>
                     <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', lineHeight: 1.25 }}>{c.title}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {totalTasks > 0 && (
+                      <span style={{
+                        fontSize: 11, padding: '4px 10px', borderRadius: 20, fontWeight: 600,
+                        background: pendingTasks > 0 ? 'rgba(255,59,59,0.12)' : 'rgba(52,211,153,0.1)',
+                        color: pendingTasks > 0 ? 'var(--red)' : 'var(--green)',
+                        border: `1px solid ${pendingTasks > 0 ? 'var(--red-border)' : 'rgba(52,211,153,0.3)'}`,
+                      }}>
+                        {pendingTasks > 0 ? `${pendingTasks}/${totalTasks} abertas` : `${totalTasks} concluídas ✓`}
+                      </span>
+                    )}
                     {dl && (
                       <span style={{
                         fontSize: 11, padding: '4px 10px', borderRadius: 20, fontWeight: 600,
@@ -276,36 +438,33 @@ export function ConstraintsPanel({ clientId }: Props) {
 
                 {/* Context */}
                 {c.context && (
-                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 16, paddingLeft: 20 }}>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 8, paddingLeft: 20 }}>
                     {c.context}
                   </p>
                 )}
 
-                {/* Linked eKyte tasks */}
-                {c.linkedEkyteTaskIds.length > 0 && (
-                  <div style={{ paddingLeft: 20 }}>
+                {/* Task checklist */}
+                <TaskChecklist constraint={{ ...c, tasks: c.tasks ?? [] }} clientId={clientId} onUpdate={onTaskUpdate} />
+
+                {/* Linked eKyte tasks (when loaded) */}
+                {linked.length > 0 && (
+                  <div style={{ paddingLeft: 20, marginTop: 16 }}>
                     <p style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                      Tasks vinculadas
+                      Tasks eKyte vinculadas
                     </p>
-                    {linked.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {linked.map(t => (
-                          <div key={t.id} style={{
-                            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                            borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
-                          }}>
-                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[t.statusCode], flexShrink: 0 }} />
-                            <span style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>{t.title}</span>
-                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.projectName}</span>
-                            <span style={{ fontSize: 10, color: STATUS_COLOR[t.statusCode] }}>{t.statusLabel}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                        {c.linkedEkyteTaskIds.length} task(s) vinculada(s) — carregue o eKyte para ver detalhes.
-                      </p>
-                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {linked.map(t => (
+                        <div key={t.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px',
+                          borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+                        }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[t.statusCode], flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>{t.title}</span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.projectName}</span>
+                          <span style={{ fontSize: 10, color: STATUS_COLOR[t.statusCode] }}>{t.statusLabel}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -313,12 +472,9 @@ export function ConstraintsPanel({ clientId }: Props) {
           })
         )}
 
-        {/* Add constraint button (when there are active ones) */}
         {active.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button onClick={() => setModal('new')} className="btn-ghost" style={{ fontSize: 12 }}>
-              + Adicionar restrição
-            </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setModal('new')} className="btn-ghost" style={{ fontSize: 12 }}>+ Adicionar restrição</button>
             {ekyteTasks.length === 0 && (
               <button onClick={fetchEkyte} className="btn-ghost" style={{ fontSize: 12 }} disabled={ekyteLoading}>
                 {ekyteLoading ? 'Buscando eKyte...' : '↺ Carregar tasks eKyte'}
@@ -327,7 +483,6 @@ export function ConstraintsPanel({ clientId }: Props) {
           </div>
         )}
 
-        {/* Resolved list */}
         {resolved.length > 0 && (
           <div>
             <button
@@ -370,7 +525,6 @@ export function ConstraintsPanel({ clientId }: Props) {
         )}
       </div>
 
-      {/* Modal */}
       {modal !== null && (
         <ConstraintModal
           clientId={clientId}

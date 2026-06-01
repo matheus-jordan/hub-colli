@@ -8,6 +8,12 @@
       "status": "active",
       "deadline": "2026-06-30",
       "linkedEkyteTaskIds": ["9303648", "9453466", "9485117", "9456196"],
+      "tasks": [
+        { "id": "t1", "title": "Garantir tracking via API (Jean)", "done": false, "uploadedToEkyte": true },
+        { "id": "t2", "title": "Atualizar e otimizar Google Local Services", "done": false, "uploadedToEkyte": false },
+        { "id": "t3", "title": "Otimizar campanhas Google Ads", "done": false, "uploadedToEkyte": false },
+        { "id": "t4", "title": "Aprovar e testar nova landing page (aguardando Thiago)", "done": false, "uploadedToEkyte": true }
+      ],
       "createdAt": "2026-06-01T00:00:00.000Z",
       "resolvedAt": null
     }
