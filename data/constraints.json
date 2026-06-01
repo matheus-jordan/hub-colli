@@ -1,1 +1,15 @@
-{}
+{
+  "aya-cleaning": [
+    {
+      "id": "ayac-001",
+      "clientId": "aya-cleaning",
+      "title": "Garantir 100% de rastreabilidade e validar o funil na pré-maturação",
+      "context": "O projeto saiu da etapa de descoberta e entrou na pré-maturação. Para avançar, precisamos garantir rastreabilidade total dos resultados (tracking via API em andamento com Jean), atualizar e otimizar o Google Local Services, otimizar as campanhas Google Ads e testar a nova landing page. Sem rastreabilidade, não conseguimos validar o que está funcionando e tomar decisões de escala.",
+      "status": "active",
+      "deadline": "2026-06-30",
+      "linkedEkyteTaskIds": ["9303648", "9453466", "9485117", "9456196"],
+      "createdAt": "2026-06-01T00:00:00.000Z",
+      "resolvedAt": null
+    }
+  ]
+}
