@@ -1,17 +1,8 @@
 import { Client, ClientSummary, ClientDetail, ClientStatus, StaleDataInfo } from './types'
-import { readSheet, readTransposedMonthly, readTransposedMonthlyChannels, readTransposedWeekly, daysAgo } from './sheets'
+import { readTransposedMonthly, readTransposedMonthlyChannels, readTransposedWeekly, daysAgo } from './sheets'
 import { SHEET_NAMES, STALE_THRESHOLD_DAYS } from './config'
 
-function getLastDate(rows: Record<string, string>[]): string | null {
-  if (rows.length === 0) return null
-  const dateCol = Object.keys(rows[0]).find(k => /^(day|dia|data|date|período|periodo|semana|week|start)/i.test(k.trim()))
-  if (!dateCol) return null
-  const dates = rows.map(r => r[dateCol]).filter(Boolean)
-  return dates.length ? dates[dates.length - 1] : null
-}
-
-// bd Google Ads é tabela de orçamento, não tem linhas por data.
-// Usa o período mais recente do mensal como proxy de atualização do Google.
+// Usa o período mais recente do mensal como indicador de atualização
 function periodToLastDate(period: string): string | null {
   if (!period) return null
   const MONTHS: Record<string, number> = {
@@ -19,21 +10,19 @@ function periodToLastDate(period: string): string | null {
     julho: 6, agosto: 7, setembro: 8, outubro: 9, novembro: 10, dezembro: 11
   }
   const parts = period.split('/')
-  // "maio/2026" → nome do mês
+  // "maio/2026"
   if (parts.length === 2) {
     const monthNum = MONTHS[parts[0].toLowerCase()]
     if (monthNum !== undefined) {
-      const lastDay = new Date(parseInt(parts[1]), monthNum + 1, 0)
-      return lastDay.toISOString().slice(0, 10)
+      return new Date(parseInt(parts[1]), monthNum + 1, 0).toISOString().slice(0, 10)
     }
   }
-  // "01/05/2026" → DD/MM/YYYY
+  // "01/05/2026"
   if (parts.length === 3) {
     const month = parseInt(parts[1]) - 1
-    const year = parseInt(parts[2])
+    const year  = parseInt(parts[2])
     if (!isNaN(month) && !isNaN(year)) {
-      const lastDay = new Date(year, month + 1, 0)
-      return lastDay.toISOString().slice(0, 10)
+      return new Date(year, month + 1, 0).toISOString().slice(0, 10)
     }
   }
   return null
@@ -48,36 +37,30 @@ function calcStatus(stale: StaleDataInfo, roasValue: number | null): ClientStatu
 }
 
 export async function getClientSummary(client: Client, selectedPeriod?: string): Promise<ClientSummary> {
-  const [monthlyMetrics, metaRows] = await Promise.all([
-    readTransposedMonthly(client.sheetId, SHEET_NAMES.MONTHLY),
-    readSheet(client.sheetId, SHEET_NAMES.META_RAW),
-  ])
+  const monthlyMetrics = await readTransposedMonthly(client.sheetId, SHEET_NAMES.MONTHLY)
 
-  const metaLastDate = getLastDate(metaRows)
-  // bd Google Ads é orçamento, não dados por data — usa o período mensal como proxy
-  const googleLastDate = periodToLastDate(monthlyMetrics[0]?.period ?? '')
-
+  // Usa a aba mensal como fonte de atualização para ambos os canais
+  const lastDate = periodToLastDate(monthlyMetrics[0]?.period ?? '')
   const staleData: StaleDataInfo = {
     meta: {
-      lastDate: metaLastDate,
-      daysOld: daysAgo(metaLastDate),
-      isStale: daysAgo(metaLastDate) > STALE_THRESHOLD_DAYS,
+      lastDate,
+      daysOld: daysAgo(lastDate),
+      isStale: daysAgo(lastDate) > STALE_THRESHOLD_DAYS,
     },
     google: {
-      lastDate: googleLastDate,
-      daysOld: daysAgo(googleLastDate),
-      isStale: daysAgo(googleLastDate) > STALE_THRESHOLD_DAYS,
+      lastDate,
+      daysOld: daysAgo(lastDate),
+      isStale: daysAgo(lastDate) > STALE_THRESHOLD_DAYS,
     },
   }
 
   const availablePeriods = monthlyMetrics.map(m => m.period)
-
   const selectedIdx = selectedPeriod
     ? monthlyMetrics.findIndex(m => m.period === selectedPeriod)
     : -1
   const effectiveIdx = selectedIdx >= 0 ? selectedIdx : 0
 
-  const currentMonth = monthlyMetrics[effectiveIdx] ?? null
+  const currentMonth  = monthlyMetrics[effectiveIdx]     ?? null
   const previousMonth = monthlyMetrics[effectiveIdx + 1] ?? null
   const status = calcStatus(staleData, currentMonth?.roas.value ?? null)
 
@@ -94,8 +77,8 @@ export async function getClientDetail(client: Client): Promise<ClientDetail> {
   return {
     ...summary,
     monthlyHistory: channels.total,
-    metaHistory: channels.meta,
-    googleHistory: channels.google,
+    metaHistory:    channels.meta,
+    googleHistory:  channels.google,
     weeklyHistory,
   }
 }
