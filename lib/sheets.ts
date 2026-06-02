@@ -43,17 +43,37 @@ export async function readSheet(sheetId: string, sheetName: string): Promise<Rec
 //   row 4+: metrics  → col 0 = metric name,     col 1..N = values
 
 const MONTHLY_METRICS: Record<string, keyof MonthlyMetrics> = {
-  'investimento':          'investment',
-  'leads':                 'leads',
-  'mqls':                  'mqls',
-  'sqls':                  'sqls',
-  'vendas':                'sales',
-  'faturamento v4':        'revenue',
-  'faturamento':           'revenue',
-  'roas':                  'roas',
-  'custo por lead':        'cpl',
-  'custo por venda':       'cpa',
-  'custo por sql':         'cpa',
+  // Investimento
+  'investimento':               'investment',
+  // Leads — variantes com e sem "(manual)"
+  'leads':                      'leads',
+  'leads (manual)':             'leads',
+  // MQLs
+  'mqls':                       'mqls',
+  'mqls (manual)':              'mqls',
+  'mql (manual)':               'mqls',
+  // SQLs
+  'sqls':                       'sqls',
+  'sqls (manual)':              'sqls',
+  'sql (manual)':               'sqls',
+  // Vendas
+  'vendas':                     'sales',
+  'vendas (manual)':            'sales',
+  // Faturamento / Receita
+  'faturamento v4':             'revenue',
+  'faturamento v4 (manual)':    'revenue',
+  'faturamento':                'revenue',
+  'receita captada':            'revenue',
+  'valor de venda (manual)':    'revenue',
+  // ROAS
+  'roas':                       'roas',
+  'roas captado':               'roas',
+  // CPL
+  'custo por lead':             'cpl',
+  // CPA
+  'custo por venda':            'cpa',
+  'custo por sql':              'cpa',
+  'custo por venda (manual)':   'cpa',
 }
 
 const WEEKLY_METRICS: Record<string, keyof WeeklyMetrics> = {
@@ -201,76 +221,79 @@ export async function readTransposedMonthlyChannels(sheetId: string, sheetName: 
   if (rows.length < 5) return empty
 
   const lbl = (row: string[]) => (row[0] ?? '').trim().toLowerCase()
-  const dateRowIdx = rows.findIndex(r => /data inicial/i.test(lbl(r)))
+  const dateRowIdx  = rows.findIndex(r => /data\s+inicial/i.test(lbl(r)))
   const yearRowIdx  = rows.findIndex(r => /^ano$/i.test(lbl(r)))
-  const monthRowIdx = rows.findIndex(r => /^mês$/i.test(lbl(r)))
+  const monthRowIdx = rows.findIndex(r => /^m[eê]s$/i.test(lbl(r)))
   if (dateRowIdx < 0) return empty
 
-  // Para encontrar as colunas, procura investimento em qualquer variante
-  const investRowIdx = rows.findIndex(r => /investimento/i.test(lbl(r)))
+  // Fronteiras de seção por label (linha pode variar entre clientes)
+  const metaStart   = rows.findIndex(r => /investimento\s+meta/i.test(lbl(r)))
+  const googleStart = rows.findIndex(r => /investimento\s+google/i.test(lbl(r)))
+  const hasChannels = metaStart >= 0 || googleStart >= 0
+
+  // Índice do "investimento" total (antes das seções de canal)
+  const totalInvestIdx = rows.findIndex(r => /^investimento$/i.test(lbl(r)))
+  const investRowIdx = totalInvestIdx >= 0 ? totalInvestIdx : (metaStart >= 0 ? metaStart : 0)
+
   const colIndices = findBestColumns(rows, dateRowIdx, investRowIdx, 6)
   if (colIndices.length === 0) return empty
 
   const periodFn = (colIdx: number) => {
-    const dateStr  = rows[dateRowIdx]?.[colIdx] ?? ''
-    const year     = rows[yearRowIdx]?.[colIdx] ?? ''
+    const dateStr   = rows[dateRowIdx]?.[colIdx] ?? ''
+    const year      = rows[yearRowIdx]?.[colIdx] ?? ''
     const monthName = rows[monthRowIdx]?.[colIdx] ?? ''
     return monthName && year ? `${monthName}/${year}` : (dateStr || `col${colIdx}`)
   }
 
-  type Section = 'total' | 'meta' | 'google'
-  const maps: Record<Section, Record<string, number>> = { total: {}, meta: {}, google: {} }
-  let cur: Section = 'total'
-
-  rows.forEach((row, idx) => {
-    const label = lbl(row)
-    if (!label) return
-
-    // Marcadores de seção: "investimento meta" / "investimento google"
-    if (/investimento[\s\-–]+meta/i.test(label) || /^investimento\s+meta$/i.test(label)) {
-      cur = 'meta'
-      if (maps.meta['investimento'] === undefined) maps.meta['investimento'] = idx
-      return
+  function buildMap(startIdx: number, endIdx: number): Record<string, number> {
+    const map: Record<string, number> = {}
+    const end = endIdx >= 0 ? endIdx : rows.length
+    for (let i = startIdx; i < end; i++) {
+      const label = lbl(rows[i])
+      if (!label) continue
+      if (MONTHLY_METRICS[label] !== undefined && map[label] === undefined) {
+        map[label] = i
+      }
     }
-    if (/investimento[\s\-–]+google/i.test(label) || /^investimento\s+google$/i.test(label)) {
-      cur = 'google'
-      if (maps.google['investimento'] === undefined) maps.google['investimento'] = idx
-      return
-    }
-    // Outros possíveis marcadores de seção total
-    if (/indicadores/i.test(label) || /^total$/i.test(label)) {
-      cur = 'total'
-      return
-    }
-
-    // Investimento bare → total
-    if (/^investimento$/i.test(label) && cur === 'total' && maps.total['investimento'] === undefined) {
-      maps.total['investimento'] = idx
-      return
-    }
-
-    // Demais métricas conhecidas → seção atual (primeira ocorrência)
-    if (MONTHLY_METRICS[label] !== undefined && maps[cur][label] === undefined) {
-      maps[cur][label] = idx
-    }
-  })
-
-  const hasChannels = Object.keys(maps.meta).length > 0 || Object.keys(maps.google).length > 0
+    return map
+  }
 
   if (!hasChannels) {
-    // Sem separação de canal: usa primeira ocorrência de cada métrica
-    const fallback: Record<string, number> = {}
-    rows.forEach((row, idx) => {
-      const l = lbl(row)
-      if (l && fallback[l] === undefined) fallback[l] = idx
-    })
-    return { total: buildMetricsFromMap(fallback, rows, colIndices, periodFn), meta: [], google: [] }
+    // Sem seções de canal: scan completo
+    return {
+      total: buildMetricsFromMap(buildMap(0, -1), rows, colIndices, periodFn),
+      meta: [],
+      google: [],
+    }
+  }
+
+  // Total: linhas antes de "Investimento Meta" (ou antes de "Investimento Google" se não tiver Meta)
+  const totalEnd = metaStart >= 0 ? metaStart : (googleStart >= 0 ? googleStart : rows.length)
+  const totalMap = buildMap(0, totalEnd)
+  // Garante que investimento total está no mapa (pode estar antes do Indicadores V4)
+  if (totalInvestIdx >= 0 && totalMap['investimento'] === undefined) {
+    totalMap['investimento'] = totalInvestIdx
+  }
+
+  // Meta: de "Investimento Meta" até "Investimento Google" (ou fim)
+  const metaMap: Record<string, number> = {}
+  if (metaStart >= 0) {
+    const metaEnd = googleStart >= 0 ? googleStart : rows.length
+    metaMap['investimento'] = metaStart  // "Investimento Meta" row IS the investment
+    Object.assign(metaMap, buildMap(metaStart + 1, metaEnd))
+  }
+
+  // Google: de "Investimento Google" até fim
+  const googleMap: Record<string, number> = {}
+  if (googleStart >= 0) {
+    googleMap['investimento'] = googleStart  // "Investimento Google" row IS the investment
+    Object.assign(googleMap, buildMap(googleStart + 1, rows.length))
   }
 
   return {
-    total: buildMetricsFromMap(maps.total, rows, colIndices, periodFn),
-    meta:  buildMetricsFromMap(maps.meta,  rows, colIndices, periodFn),
-    google: buildMetricsFromMap(maps.google, rows, colIndices, periodFn),
+    total:  buildMetricsFromMap(totalMap,  rows, colIndices, periodFn),
+    meta:   buildMetricsFromMap(metaMap,   rows, colIndices, periodFn),
+    google: buildMetricsFromMap(googleMap, rows, colIndices, periodFn),
   }
 }
 
@@ -290,12 +313,16 @@ export async function readTransposedMonthly(sheetId: string, sheetName: string):
   const colIndices = findBestColumns(rows, dateRowIdx, investRowIdx, 6)
   if (colIndices.length === 0) return []
 
-  // Build label → row index map (primeira ocorrência = seção total/Indicadores V4)
+  // Só escaneia linhas antes de "Investimento Meta/Google" para pegar total correto
+  const metaStartIdx   = rows.findIndex(r => /investimento\s+meta/i.test(labelCol(r)))
+  const googleStartIdx = rows.findIndex(r => /investimento\s+google/i.test(labelCol(r)))
+  const scanEnd = metaStartIdx >= 0 ? metaStartIdx : (googleStartIdx >= 0 ? googleStartIdx : rows.length)
+
   const metricRowMap: Record<string, number> = {}
-  rows.forEach((row, idx) => {
-    const label = labelCol(row)
-    if (label && metricRowMap[label] === undefined) metricRowMap[label] = idx
-  })
+  for (let i = 0; i < scanEnd; i++) {
+    const label = labelCol(rows[i])
+    if (label && metricRowMap[label] === undefined) metricRowMap[label] = i
+  }
 
   return colIndices.map(colIdx => {
     const dateStr = rows[dateRowIdx]?.[colIdx] ?? ''
