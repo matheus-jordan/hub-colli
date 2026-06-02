@@ -9,6 +9,7 @@ import { StaleAlert } from '@/components/StaleAlert'
 import { MetricsCard } from '@/components/MetricsCard'
 import { TrendChart } from '@/components/TrendChart'
 import { ConstraintsPanel } from '@/components/ConstraintsPanel'
+import { FunnelView } from '@/components/FunnelView'
 
 const LINK_LABELS: Record<string, string> = {
   growthPack: 'Growth Pack',
@@ -193,6 +194,11 @@ export default function ClientPage() {
                 <MetricsCard label="ROAS" current={currentMonth.roas} previous={previousMonth?.roas} highlight />
                 <MetricsCard label="CPL" current={currentMonth.cpl} previous={previousMonth?.cpl} />
               </div>
+            )}
+
+            {/* Funnel */}
+            {currentMonth && (
+              <FunnelView current={currentMonth} previous={previousMonth} />
             )}
 
             {/* Tabs */}

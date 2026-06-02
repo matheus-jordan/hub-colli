@@ -454,15 +454,25 @@ export function ConstraintsPanel({ clientId }: Props) {
                     </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {linked.map(t => (
-                        <div key={t.id} style={{
-                          display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px',
-                          borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
-                        }}>
+                        <a
+                          key={t.id}
+                          href={`https://app.ekyte.com/tarefas/${t.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px',
+                            borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+                            textDecoration: 'none', transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-strong)' }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)' }}
+                        >
                           <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[t.statusCode], flexShrink: 0 }} />
                           <span style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>{t.title}</span>
                           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t.projectName}</span>
                           <span style={{ fontSize: 10, color: STATUS_COLOR[t.statusCode] }}>{t.statusLabel}</span>
-                        </div>
+                          <span style={{ fontSize: 10, color: 'var(--red)', opacity: 0.7 }}>↗ eKyte</span>
+                        </a>
                       ))}
                     </div>
                   </div>
