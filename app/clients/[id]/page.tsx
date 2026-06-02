@@ -10,6 +10,7 @@ import { MetricsCard } from '@/components/MetricsCard'
 import { TrendChart } from '@/components/TrendChart'
 import { ConstraintsPanel } from '@/components/ConstraintsPanel'
 import { FunnelView } from '@/components/FunnelView'
+import { ChannelCards } from '@/components/ChannelCards'
 
 const LINK_LABELS: Record<string, string> = {
   growthPack: 'Growth Pack',
@@ -101,7 +102,7 @@ export default function ClientPage() {
     )
   }
 
-  const { client, status, currentMonth, previousMonth, staleData, monthlyHistory, weeklyHistory } = detail
+  const { client, status, currentMonth, previousMonth, staleData, monthlyHistory, weeklyHistory, metaHistory, googleHistory } = detail
   const links = Object.entries(client.links).filter(([, v]) => v)
 
   return (
@@ -200,6 +201,9 @@ export default function ClientPage() {
             {currentMonth && (
               <FunnelView current={currentMonth} previous={previousMonth} />
             )}
+
+            {/* Channel breakdown */}
+            <ChannelCards meta={metaHistory} google={googleHistory} />
 
             {/* Tabs */}
             <div className="glass" style={{ overflow: 'hidden' }}>

@@ -30,7 +30,7 @@ export function FunnelView({ current, previous }: Props) {
     { label: 'MQLs', value: current.mqls.value, formatted: current.mqls.formatted, color: '#fbbf24' },
     { label: 'SQLs', value: current.sqls.value, formatted: current.sqls.formatted, color: '#a3e635' },
     { label: 'Vendas', value: current.sales.value, formatted: current.sales.formatted, color: '#34d399' },
-  ].filter(s => s.value !== null && s.value > 0)
+  ]
 
   // Use leads as width base (most relevant funnel top after investment)
   const leadsVal = current.leads.value ?? 0
@@ -68,8 +68,6 @@ export function FunnelView({ current, previous }: Props) {
       lowerIsBetter: false,
     },
   ].filter(k => k.value !== '—')
-
-  if (stages.length < 2) return null
 
   return (
     <div className="glass" style={{ padding: '20px 24px' }}>

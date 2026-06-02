@@ -152,6 +152,106 @@ function findBestColumns(rows: string[][], dateRowIdx: number, investRowIdx: num
   return candidates.slice(0, count).map(c => c.colIdx)
 }
 
+export interface ChannelMonthlyMetrics {
+  total: MonthlyMetrics[]
+  meta: MonthlyMetrics[]
+  google: MonthlyMetrics[]
+}
+
+function buildMetricsFromMap(
+  metricRowMap: Record<string, number>,
+  rows: string[][],
+  colIndices: number[],
+  periodFn: (colIdx: number) => string
+): MonthlyMetrics[] {
+  const fmtMap: Record<keyof MonthlyMetrics, (v: number | null) => string> = {
+    period: () => '',
+    investment: fmtCurrency,
+    leads: v => fmtNumber(v),
+    mqls: v => fmtNumber(v),
+    sqls: v => fmtNumber(v),
+    sales: v => fmtNumber(v),
+    revenue: fmtCurrency,
+    cpa: fmtCurrency,
+    roas: fmtRoas,
+    cpl: fmtCurrency,
+  }
+
+  return colIndices.map(colIdx => {
+    const period = periodFn(colIdx)
+    const m = emptyMetrics(period)
+    Object.entries(MONTHLY_METRICS).forEach(([label, field]) => {
+      const rowIdx = metricRowMap[label]
+      if (rowIdx === undefined) return
+      const raw = rows[rowIdx]?.[colIdx] ?? ''
+      if (!raw) return
+      ;(m[field] as MetricValue) = mv(raw, fmtMap[field])
+    })
+    return m
+  })
+}
+
+export async function readTransposedMonthlyChannels(sheetId: string, sheetName: string): Promise<ChannelMonthlyMetrics> {
+  const rows = await fetchRaw(sheetId, sheetName)
+  const empty: ChannelMonthlyMetrics = { total: [], meta: [], google: [] }
+  if (rows.length < 5) return empty
+
+  const labelCol = (row: string[]) => (row[0] ?? '').trim().toLowerCase()
+  const dateRowIdx = rows.findIndex(r => /data inicial/i.test(labelCol(r)))
+  const yearRowIdx = rows.findIndex(r => /^ano$/i.test(labelCol(r)))
+  const monthRowIdx = rows.findIndex(r => /^mês$/i.test(labelCol(r)))
+  const investRowIdx = rows.findIndex(r => /^investimento$/i.test(labelCol(r)))
+  if (dateRowIdx < 0) return empty
+
+  const colIndices = findBestColumns(rows, dateRowIdx, investRowIdx, 6)
+  if (colIndices.length === 0) return empty
+
+  const periodFn = (colIdx: number) => {
+    const dateStr = rows[dateRowIdx]?.[colIdx] ?? ''
+    const year = rows[yearRowIdx]?.[colIdx] ?? ''
+    const monthName = rows[monthRowIdx]?.[colIdx] ?? ''
+    return monthName && year ? `${monthName}/${year}` : (dateStr || `col${colIdx}`)
+  }
+
+  // Detect section boundaries
+  type Section = 'total' | 'meta' | 'google'
+  const sectionMaps: Record<Section, Record<string, number>> = { total: {}, meta: {}, google: {} }
+  let currentSection: Section = 'total'
+
+  rows.forEach((row, idx) => {
+    const label = labelCol(row)
+    if (!label) return
+    if (/meta\s*ads/i.test(label) || label === 'meta') { currentSection = 'meta'; return }
+    if (/google\s*ads/i.test(label) || label === 'google') { currentSection = 'google'; return }
+    if (/indicadores/i.test(label)) { currentSection = 'total'; return }
+    // Only store if it's a known metric — avoids overwriting with wrong section
+    if (MONTHLY_METRICS[label] !== undefined) {
+      // Each section gets its own first occurrence of the metric
+      if (sectionMaps[currentSection][label] === undefined) {
+        sectionMaps[currentSection][label] = idx
+      }
+    }
+  })
+
+  // Fallback: if no section separation found, total gets all metrics
+  const hasChannels = Object.keys(sectionMaps.meta).length > 0 || Object.keys(sectionMaps.google).length > 0
+  if (!hasChannels) {
+    const fallbackMap: Record<string, number> = {}
+    rows.forEach((row, idx) => { const l = labelCol(row); if (l) fallbackMap[l] = idx })
+    return {
+      total: buildMetricsFromMap(fallbackMap, rows, colIndices, periodFn),
+      meta: [],
+      google: [],
+    }
+  }
+
+  return {
+    total: buildMetricsFromMap(sectionMaps.total, rows, colIndices, periodFn),
+    meta: buildMetricsFromMap(sectionMaps.meta, rows, colIndices, periodFn),
+    google: buildMetricsFromMap(sectionMaps.google, rows, colIndices, periodFn),
+  }
+}
+
 export async function readTransposedMonthly(sheetId: string, sheetName: string): Promise<MonthlyMetrics[]> {
   const rows = await fetchRaw(sheetId, sheetName)
   if (rows.length < 5) return []

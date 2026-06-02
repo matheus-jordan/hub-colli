@@ -73,6 +73,8 @@ export interface ClientSummary {
 export interface ClientDetail extends ClientSummary {
   monthlyHistory: MonthlyMetrics[]
   weeklyHistory: WeeklyMetrics[]
+  metaHistory: MonthlyMetrics[]
+  googleHistory: MonthlyMetrics[]
 }
 
 export interface Task {

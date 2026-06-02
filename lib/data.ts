@@ -1,5 +1,5 @@
 import { Client, ClientSummary, ClientDetail, ClientStatus, StaleDataInfo } from './types'
-import { readSheet, readTransposedMonthly, readTransposedWeekly, daysAgo } from './sheets'
+import { readSheet, readTransposedMonthly, readTransposedMonthlyChannels, readTransposedWeekly, daysAgo } from './sheets'
 import { SHEET_NAMES, STALE_THRESHOLD_DAYS } from './config'
 
 function getLastDate(rows: Record<string, string>[]): string | null {
@@ -13,15 +13,30 @@ function getLastDate(rows: Record<string, string>[]): string | null {
 // bd Google Ads é tabela de orçamento, não tem linhas por data.
 // Usa o período mais recente do mensal como proxy de atualização do Google.
 function periodToLastDate(period: string): string | null {
+  if (!period) return null
   const MONTHS: Record<string, number> = {
     janeiro: 0, fevereiro: 1, março: 2, abril: 3, maio: 4, junho: 5,
     julho: 6, agosto: 7, setembro: 8, outubro: 9, novembro: 10, dezembro: 11
   }
-  const [month, year] = period.toLowerCase().split('/')
-  const monthNum = MONTHS[month]
-  if (monthNum === undefined || !year) return null
-  const lastDay = new Date(parseInt(year), monthNum + 1, 0)
-  return lastDay.toISOString().slice(0, 10)
+  const parts = period.split('/')
+  // "maio/2026" → nome do mês
+  if (parts.length === 2) {
+    const monthNum = MONTHS[parts[0].toLowerCase()]
+    if (monthNum !== undefined) {
+      const lastDay = new Date(parseInt(parts[1]), monthNum + 1, 0)
+      return lastDay.toISOString().slice(0, 10)
+    }
+  }
+  // "01/05/2026" → DD/MM/YYYY
+  if (parts.length === 3) {
+    const month = parseInt(parts[1]) - 1
+    const year = parseInt(parts[2])
+    if (!isNaN(month) && !isNaN(year)) {
+      const lastDay = new Date(year, month + 1, 0)
+      return lastDay.toISOString().slice(0, 10)
+    }
+  }
+  return null
 }
 
 function calcStatus(stale: StaleDataInfo, roasValue: number | null): ClientStatus {
@@ -70,11 +85,17 @@ export async function getClientSummary(client: Client, selectedPeriod?: string):
 }
 
 export async function getClientDetail(client: Client): Promise<ClientDetail> {
-  const [summary, monthlyHistory, weeklyHistory] = await Promise.all([
+  const [summary, channels, weeklyHistory] = await Promise.all([
     getClientSummary(client),
-    readTransposedMonthly(client.sheetId, SHEET_NAMES.MONTHLY),
+    readTransposedMonthlyChannels(client.sheetId, SHEET_NAMES.MONTHLY),
     readTransposedWeekly(client.sheetId, SHEET_NAMES.WEEKLY),
   ])
 
-  return { ...summary, monthlyHistory, weeklyHistory }
+  return {
+    ...summary,
+    monthlyHistory: channels.total,
+    metaHistory: channels.meta,
+    googleHistory: channels.google,
+    weeklyHistory,
+  }
 }
