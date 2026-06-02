@@ -163,9 +163,22 @@ function findBestColumns(rows: string[][], dateRowIdx: number, investRowIdx: num
   // Sort descending by date, return most recent N
   candidates.sort((a, b) => b.date.getTime() - a.date.getTime())
 
-  // Prefer columns where investment row has a value
+  const today = new Date()
+
+  // Prefer columns where investment row has a value AND o mês já terminou (data final < hoje)
+  // "Data final" está na linha imediatamente após "Data inicial"
+  const endDateRowIdx = dateRowIdx + 1
   if (investRowIdx >= 0) {
     const withData = candidates.filter(c => parseNum(rows[investRowIdx]?.[c.colIdx] ?? '') !== null)
+    // Prefere meses concluídos (evita mostrar mês corrente incompleto como padrão)
+    const completed = withData.filter(c => {
+      const endStr = rows[endDateRowIdx]?.[c.colIdx] ?? ''
+      const endDate = parseDate(endStr)
+      return endDate ? endDate < today : true  // se não tem data final, inclui
+    })
+    if (completed.length >= 1) {
+      return completed.slice(0, count).map(c => c.colIdx)
+    }
     if (withData.length >= count) return withData.slice(0, count).map(c => c.colIdx)
   }
 
