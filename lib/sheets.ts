@@ -8,7 +8,7 @@ const BASE = 'https://docs.google.com/spreadsheets/d'
 async function fetchRaw(sheetId: string, sheetName: string): Promise<string[][]> {
   const url = `${BASE}/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`
   try {
-    const res = await fetch(url, { next: { revalidate: 1800 } })
+    const res = await fetch(url, { next: { revalidate: 1800, tags: ['sheets'] } })
     if (!res.ok) return []
     const text = await res.text()
     const result = Papa.parse<string[]>(text, { skipEmptyLines: false })
