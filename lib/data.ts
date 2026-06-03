@@ -67,9 +67,9 @@ export async function getClientSummary(client: Client, selectedPeriod?: string):
   return { client, status, currentMonth, previousMonth, staleData, lastUpdated: new Date().toISOString(), availablePeriods }
 }
 
-export async function getClientDetail(client: Client): Promise<ClientDetail> {
+export async function getClientDetail(client: Client, selectedPeriod?: string): Promise<ClientDetail> {
   const [summary, channels, weeklyHistory] = await Promise.all([
-    getClientSummary(client),
+    getClientSummary(client, selectedPeriod),
     readTransposedMonthlyChannels(client.sheetId, SHEET_NAMES.MONTHLY),
     readTransposedWeekly(client.sheetId, SHEET_NAMES.WEEKLY),
   ])

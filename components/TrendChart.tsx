@@ -4,7 +4,7 @@ import { MonthlyMetrics } from '@/lib/types'
 
 interface Props {
   data: MonthlyMetrics[]
-  metric: keyof Pick<MonthlyMetrics, 'investment' | 'leads' | 'roas' | 'cpa'>
+  metric: keyof Pick<MonthlyMetrics, 'investment' | 'leads' | 'roas' | 'cpa' | 'cpl' | 'mqls' | 'sqls' | 'sales' | 'revenue' | 'ctr' | 'cpm'>
   color?: string
   label?: string
 }

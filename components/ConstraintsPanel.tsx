@@ -114,35 +114,56 @@ function TaskChecklist({ constraint, clientId, onUpdate }: {
             style={{
               width: 18, height: 18, borderRadius: 5, flexShrink: 0, cursor: 'pointer',
               border: '1.5px solid var(--border-strong)', background: 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.15s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s',
             }}
           />
-          <span style={{ flex: 1, fontSize: 12, color: 'var(--text)' }}>{task.title}</span>
+          {/* Task title — link se tiver ekyteUrl */}
+          {task.ekyteUrl ? (
+            <a href={task.ekyteUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, fontSize: 12, color: 'var(--text)', textDecoration: 'none' }}
+               onMouseEnter={e => (e.currentTarget.style.color = 'var(--red)')}
+               onMouseLeave={e => (e.currentTarget.style.color = 'var(--text)')}>
+              {task.title} <span style={{ fontSize: 10, opacity: 0.5 }}>↗</span>
+            </a>
+          ) : (
+            <span style={{ flex: 1, fontSize: 12, color: 'var(--text)' }}>{task.title}</span>
+          )}
 
-          {/* eKyte checkbox */}
-          <button
-            onClick={() => toggleEkyte(task)}
-            title={task.uploadedToEkyte ? 'Remover marcação eKyte' : 'Marcar como subido no eKyte'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
-              background: task.uploadedToEkyte ? 'rgba(52,211,153,0.1)' : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${task.uploadedToEkyte ? 'rgba(52,211,153,0.3)' : 'var(--border)'}`,
-              borderRadius: 8, padding: '3px 9px', transition: 'all 0.15s',
-            }}
-          >
-            <span style={{
-              width: 12, height: 12, borderRadius: 3, flexShrink: 0,
-              border: `1.5px solid ${task.uploadedToEkyte ? '#34d399' : 'var(--border-strong)'}`,
-              background: task.uploadedToEkyte ? '#34d399' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: '#000'
-            }}>
-              {task.uploadedToEkyte ? '✓' : ''}
-            </span>
-            <span style={{ fontSize: 10, color: task.uploadedToEkyte ? '#34d399' : 'var(--text-dim)', fontWeight: 600 }}>
-              eKyte
-            </span>
-          </button>
+          {/* eKyte — checkbox + campo de URL */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {!task.uploadedToEkyte && (
+              <input
+                placeholder="URL eKyte..."
+                defaultValue={task.ekyteUrl ?? ''}
+                onBlur={e => {
+                  const url = e.target.value.trim()
+                  if (url !== (task.ekyteUrl ?? '')) {
+                    const updated = constraint.tasks.map(t => t.id === task.id ? { ...t, ekyteUrl: url || undefined } : t)
+                    patch(updated)
+                  }
+                }}
+                className="input-dark"
+                style={{ width: 120, padding: '3px 8px', fontSize: 10 }}
+              />
+            )}
+            <button
+              onClick={() => toggleEkyte(task)}
+              title={task.uploadedToEkyte ? 'Remover marcação eKyte' : 'Marcar como subido no eKyte'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
+                background: task.uploadedToEkyte ? 'rgba(52,211,153,0.1)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${task.uploadedToEkyte ? 'rgba(52,211,153,0.3)' : 'var(--border)'}`,
+                borderRadius: 8, padding: '3px 9px', transition: 'all 0.15s',
+              }}
+            >
+              <span style={{
+                width: 12, height: 12, borderRadius: 3, flexShrink: 0,
+                border: `1.5px solid ${task.uploadedToEkyte ? '#34d399' : 'var(--border-strong)'}`,
+                background: task.uploadedToEkyte ? '#34d399' : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: '#000'
+              }}>{task.uploadedToEkyte ? '✓' : ''}</span>
+              <span style={{ fontSize: 10, color: task.uploadedToEkyte ? '#34d399' : 'var(--text-dim)', fontWeight: 600 }}>eKyte</span>
+            </button>
+          </div>
         </div>
       ))}
 

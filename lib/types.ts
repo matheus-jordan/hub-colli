@@ -38,6 +38,8 @@ export interface MonthlyMetrics {
   cpa: MetricValue
   roas: MetricValue
   cpl: MetricValue
+  ctr: MetricValue
+  cpm: MetricValue
 }
 
 export interface WeeklyMetrics {
@@ -110,6 +112,7 @@ export interface ConstraintTask {
   title: string
   done: boolean
   uploadedToEkyte: boolean
+  ekyteUrl?: string
 }
 
 export interface Constraint {

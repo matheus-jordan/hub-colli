@@ -74,6 +74,14 @@ const MONTHLY_METRICS: Record<string, keyof MonthlyMetrics> = {
   'custo por venda':            'cpa',
   'custo por sql':              'cpa',
   'custo por venda (manual)':   'cpa',
+  // CTR
+  'ctr':                        'ctr',
+  'taxa de conversão':          'ctr',
+  'taxa de conversão (lead)':   'ctr',
+  '% tax conversão (lead)':     'ctr',
+  // CPM
+  'custo por mil impressões':   'cpm',
+  'cpm':                        'cpm',
 }
 
 const WEEKLY_METRICS: Record<string, keyof WeeklyMetrics> = {
@@ -109,6 +117,11 @@ export function fmtRoas(v: number | null): string {
   return v.toFixed(2) + 'x'
 }
 
+export function fmtPercent(v: number | null): string {
+  if (v === null) return '—'
+  return v.toFixed(2) + '%'
+}
+
 function mv(raw: string, fmt: (v: number | null) => string): MetricValue {
   const value = parseNum(raw)
   return { value, formatted: fmt(value) }
@@ -116,7 +129,7 @@ function mv(raw: string, fmt: (v: number | null) => string): MetricValue {
 
 function emptyMetrics(period: string): MonthlyMetrics {
   const e: MetricValue = { value: null, formatted: '—' }
-  return { period, investment: e, leads: e, mqls: e, sqls: e, sales: e, revenue: e, cpa: e, roas: e, cpl: e }
+  return { period, investment: e, leads: e, mqls: e, sqls: e, sales: e, revenue: e, cpa: e, roas: e, cpl: e, ctr: e, cpm: e }
 }
 
 function emptyWeekly(period: string): WeeklyMetrics {
@@ -208,6 +221,8 @@ function buildMetricsFromMap(
     cpa: fmtCurrency,
     roas: fmtRoas,
     cpl: fmtCurrency,
+    ctr: fmtPercent,
+    cpm: fmtCurrency,
   }
 
   return colIndices.map(colIdx => {
@@ -367,6 +382,8 @@ export async function readTransposedMonthly(sheetId: string, sheetName: string):
         cpa: fmtCurrency,
         roas: fmtRoas,
         cpl: fmtCurrency,
+        ctr: fmtPercent,
+        cpm: fmtCurrency,
       }
       ;(m[field] as MetricValue) = mv(raw, fmtMap[field])
     })
