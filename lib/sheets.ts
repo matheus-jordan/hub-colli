@@ -1,5 +1,5 @@
 import Papa from 'papaparse'
-import { MediaPace, MetricValue, MonthlyMetrics, WeeklyMetrics } from './types'
+import { DailyHealth, MediaPace, MetricValue, MonthlyMetrics, WeeklyMetrics } from './types'
 
 const BASE = 'https://docs.google.com/spreadsheets/d'
 
@@ -435,6 +435,73 @@ export async function readMediaPace(sheetId: string, sheetName: string): Promise
     actualMTD: { value: actualVal, formatted: fmtCurrency(actualVal) },
     monthLabel: capitalizeWord(monthName),
   }
+}
+
+// ── Saúde diária (aba "5.0 Acompanhamento Diário") ──────────────────────────
+//
+// Estrutura: row "Dia" = datas DD/MM/YYYY, row "Investimento Diário" = gasto
+// do dia, row "Leads" = leads do dia. Usado para detectar:
+//   - "Quebra GP?": investimento zerado no último dia com dado, apesar de
+//     histórico recente com investimento ativo (possível quebra de Growth Pack)
+//   - "Backup quebrado?": dias seguidos sem nenhum lead novo
+
+export async function readDailyHealth(sheetId: string, sheetName: string): Promise<DailyHealth> {
+  const empty: DailyHealth = { gpBreak: false, lastInvestDate: null, daysSinceLastLead: null }
+
+  const rows = await fetchRaw(sheetId, sheetName)
+  if (rows.length < 3) return empty
+
+  const labelCol = (row: string[]) => (row[0] ?? '').trim().toLowerCase()
+  const dayRowIdx = rows.findIndex(r => /^dia$/i.test(labelCol(r)))
+  const investRowIdx = rows.findIndex(r => /^investimento di[áa]rio$/i.test(labelCol(r)))
+  const leadsRowIdx = rows.findIndex(r => /^leads$/i.test(labelCol(r)))
+  if (dayRowIdx < 0) return empty
+
+  // Colunas com data válida e <= hoje, em ordem cronológica
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const cols: { colIdx: number; date: Date }[] = []
+  for (let c = 1; c < rows[dayRowIdx].length; c++) {
+    const d = parseDate(rows[dayRowIdx][c] ?? '')
+    if (d && d <= today) cols.push({ colIdx: c, date: d })
+  }
+  if (cols.length === 0) return empty
+  cols.sort((a, b) => a.date.getTime() - b.date.getTime())
+
+  // Último dia completo = penúltimo (o último pode ser "hoje", ainda em aberto)
+  const lastFullDay = cols.length >= 2 ? cols[cols.length - 2] : cols[cols.length - 1]
+  const lastInvestDate = lastFullDay.date.toISOString().slice(0, 10)
+
+  // Aba diária parada/desatualizada (não reflete o mês corrente) — não é
+  // confiável para detectar quebras de hoje/ontem
+  if (daysAgo(lastInvestDate) > 7) return empty
+
+  let gpBreak = false
+  if (investRowIdx >= 0) {
+    const investYesterday = parseNum(rows[investRowIdx]?.[lastFullDay.colIdx] ?? '')
+    const prior = cols.slice(Math.max(0, cols.length - 8), cols.length - 1)
+      .map(c => parseNum(rows[investRowIdx]?.[c.colIdx] ?? ''))
+      .filter((v): v is number => v !== null)
+    const avgPrior = prior.length > 0 ? prior.reduce((a, b) => a + b, 0) / prior.length : 0
+    gpBreak = (investYesterday === null || investYesterday === 0) && avgPrior > 10
+  }
+
+  let daysSinceLastLead: number | null = null
+  if (leadsRowIdx >= 0) {
+    for (let i = cols.length - 1; i >= 0; i--) {
+      const v = parseNum(rows[leadsRowIdx]?.[cols[i].colIdx] ?? '')
+      if (v !== null && v > 0) {
+        daysSinceLastLead = Math.floor((lastFullDay.date.getTime() - cols[i].date.getTime()) / 86400000)
+        break
+      }
+    }
+    if (daysSinceLastLead === null && cols.length > 0) {
+      // Sem nenhum lead registrado na janela disponível
+      daysSinceLastLead = Math.floor((lastFullDay.date.getTime() - cols[0].date.getTime()) / 86400000)
+    }
+  }
+
+  return { gpBreak, lastInvestDate, daysSinceLastLead }
 }
 
 export async function readTransposedWeekly(sheetId: string, sheetName: string): Promise<WeeklyMetrics[]> {

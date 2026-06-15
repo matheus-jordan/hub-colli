@@ -72,6 +72,12 @@ export interface MediaPace {
   monthLabel: string
 }
 
+export interface DailyHealth {
+  gpBreak: boolean
+  lastInvestDate: string | null
+  daysSinceLastLead: number | null
+}
+
 export interface ClientSummary {
   client: Client
   status: ClientStatus
@@ -79,6 +85,7 @@ export interface ClientSummary {
   previousMonth: MonthlyMetrics | null
   staleData: StaleDataInfo
   mediaPace: MediaPace
+  dailyHealth: DailyHealth
   lastUpdated: string
   availablePeriods: string[]
 }

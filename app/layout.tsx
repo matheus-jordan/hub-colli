@@ -1,18 +1,19 @@
 import type { Metadata } from 'next'
-import { Geist } from 'next/font/google'
+import { IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from 'next/font/google'
 import './globals.css'
 
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
+const ibmPlex = IBM_Plex_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'], variable: '--font-ibm-plex' })
+const ibmPlexCond = IBM_Plex_Sans_Condensed({ subsets: ['latin'], weight: ['600', '700'], variable: '--font-ibm-cond' })
 
 export const metadata: Metadata = {
-  title: 'Hub do Account Manager',
+  title: 'Hub Colli · V4 Command Center',
   description: 'Painel de gestão de clientes Colli',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${geist.variable} h-full`}>
-      <body className="h-full antialiased" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{children}</body>
+    <html lang="pt-BR" className={`${ibmPlex.variable} ${ibmPlexCond.variable} h-full`}>
+      <body className="h-full antialiased">{children}</body>
     </html>
   )
 }
