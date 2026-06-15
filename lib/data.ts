@@ -1,5 +1,5 @@
 import { Client, ClientSummary, ClientDetail, ClientStatus, StaleDataInfo } from './types'
-import { readTransposedMonthly, readTransposedMonthlyChannels, readTransposedWeekly, daysAgo } from './sheets'
+import { readTransposedMonthly, readTransposedMonthlyChannels, readTransposedWeekly, readMediaPace, daysAgo } from './sheets'
 import { SHEET_NAMES, STALE_THRESHOLD_DAYS } from './config'
 
 // Usa o período mais recente do mensal como indicador de atualização
@@ -37,7 +37,10 @@ function calcStatus(stale: StaleDataInfo, roasValue: number | null): ClientStatu
 }
 
 export async function getClientSummary(client: Client, selectedPeriod?: string): Promise<ClientSummary> {
-  const monthlyMetrics = await readTransposedMonthly(client.sheetId, SHEET_NAMES.MONTHLY)
+  const [monthlyMetrics, mediaPace] = await Promise.all([
+    readTransposedMonthly(client.sheetId, SHEET_NAMES.MONTHLY),
+    readMediaPace(client.sheetId, SHEET_NAMES.PROJECTION),
+  ])
 
   // Usa a aba mensal como fonte de atualização para ambos os canais
   const lastDate = periodToLastDate(monthlyMetrics[0]?.period ?? '')
@@ -64,7 +67,7 @@ export async function getClientSummary(client: Client, selectedPeriod?: string):
   const previousMonth = monthlyMetrics[effectiveIdx + 1] ?? null
   const status = calcStatus(staleData, currentMonth?.roas.value ?? null)
 
-  return { client, status, currentMonth, previousMonth, staleData, lastUpdated: new Date().toISOString(), availablePeriods }
+  return { client, status, currentMonth, previousMonth, staleData, mediaPace, lastUpdated: new Date().toISOString(), availablePeriods }
 }
 
 export async function getClientDetail(client: Client, selectedPeriod?: string): Promise<ClientDetail> {

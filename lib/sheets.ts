@@ -1,5 +1,5 @@
 import Papa from 'papaparse'
-import { MetricValue, MonthlyMetrics, WeeklyMetrics } from './types'
+import { MediaPace, MetricValue, MonthlyMetrics, WeeklyMetrics } from './types'
 
 const BASE = 'https://docs.google.com/spreadsheets/d'
 
@@ -377,6 +377,64 @@ export async function readTransposedMonthly(sheetId: string, sheetName: string):
 
     return m
   })
+}
+
+// ── Pace de mídia (aba "2.0 Projeção / Cenários") ───────────────────────────
+//
+// A linha "Orçamento" guarda, entre outras colunas, o par referente ao mês
+// vigente: uma coluna "meta"/"previsto até o dia" e outra "realizado até o
+// dia"/"realizado total". Os títulos exatos variam entre clientes, então o
+// match é feito por regex sobre a linha de cabeçalho (linha 0).
+
+const MONTH_NAMES_PT = [
+  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+]
+
+function capitalizeWord(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
+export async function readMediaPace(sheetId: string, sheetName: string): Promise<MediaPace> {
+  const monthName = MONTH_NAMES_PT[new Date().getMonth()]
+  const unknown: MediaPace = {
+    status: 'unknown',
+    ratio: null,
+    targetMTD: { value: null, formatted: '—' },
+    actualMTD: { value: null, formatted: '—' },
+    monthLabel: capitalizeWord(monthName),
+  }
+
+  const rows = await fetchRaw(sheetId, sheetName)
+  if (rows.length < 2) return unknown
+
+  const orcamentoRowIdx = rows.findIndex(r => /^or[çc]amento|^budget/i.test((r[0] ?? '').trim()))
+  if (orcamentoRowIdx < 0) return unknown
+
+  const header = rows[0]
+  const targetRe = new RegExp(`(meta\\s*mtd|realizado\\s*no\\s*dia)\\s*${monthName}`, 'i')
+  const actualRe = new RegExp(`(realizado\\s*mtd|realizado\\s*total)\\s*${monthName}`, 'i')
+
+  const targetIdx = header.findIndex(h => targetRe.test((h ?? '').trim()))
+  const actualIdx = header.findIndex(h => actualRe.test((h ?? '').trim()))
+  if (targetIdx < 0 || actualIdx < 0) return unknown
+
+  const targetVal = parseNum(rows[orcamentoRowIdx]?.[targetIdx] ?? '')
+  const actualVal = parseNum(rows[orcamentoRowIdx]?.[actualIdx] ?? '')
+  if (targetVal === null || actualVal === null || targetVal === 0) return unknown
+
+  const ratio = actualVal / targetVal
+  let status: MediaPace['status'] = 'on'
+  if (ratio > 1.15) status = 'over'
+  else if (ratio < 0.85) status = 'under'
+
+  return {
+    status,
+    ratio,
+    targetMTD: { value: targetVal, formatted: fmtCurrency(targetVal) },
+    actualMTD: { value: actualVal, formatted: fmtCurrency(actualVal) },
+    monthLabel: capitalizeWord(monthName),
+  }
 }
 
 export async function readTransposedWeekly(sheetId: string, sheetName: string): Promise<WeeklyMetrics[]> {

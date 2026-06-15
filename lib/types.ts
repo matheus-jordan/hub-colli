@@ -62,12 +62,23 @@ export interface StaleDataInfo {
   google: StaleChannel
 }
 
+export type PaceStatus = 'on' | 'over' | 'under' | 'unknown'
+
+export interface MediaPace {
+  status: PaceStatus
+  ratio: number | null
+  targetMTD: MetricValue
+  actualMTD: MetricValue
+  monthLabel: string
+}
+
 export interface ClientSummary {
   client: Client
   status: ClientStatus
   currentMonth: MonthlyMetrics | null
   previousMonth: MonthlyMetrics | null
   staleData: StaleDataInfo
+  mediaPace: MediaPace
   lastUpdated: string
   availablePeriods: string[]
 }

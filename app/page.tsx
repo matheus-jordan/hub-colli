@@ -1,17 +1,32 @@
-import { Suspense } from 'react'
+import { Suspense, type CSSProperties } from 'react'
 import { CLIENTS } from '@/lib/config'
 import { getClientSummary } from '@/lib/data'
+import { ClientSummary, ClientStatus, PaceStatus } from '@/lib/types'
 import { Sidebar } from '@/components/Sidebar'
 import { ClientAvatar } from '@/components/ClientAvatar'
 import { StatusBadge } from '@/components/StatusBadge'
+import { PaceBadge } from '@/components/PaceBadge'
 import { MonthFilter } from '@/components/MonthFilter'
 import Link from 'next/link'
 
 export const revalidate = 1800
 
+// Clientes que precisam de atenção sobem para o topo das listas
+const STATUS_PRIORITY: Record<ClientStatus, number> = { danger: 0, warning: 1, unknown: 2, ok: 3 }
+const PACE_PRIORITY: Record<PaceStatus, number> = { under: 0, over: 1, unknown: 2, on: 3 }
+
+function byAttention(a: ClientSummary, b: ClientSummary) {
+  const sA = STATUS_PRIORITY[a.status], sB = STATUS_PRIORITY[b.status]
+  if (sA !== sB) return sA - sB
+  const pA = PACE_PRIORITY[a.mediaPace.status], pB = PACE_PRIORITY[b.mediaPace.status]
+  if (pA !== pB) return pA - pB
+  return a.client.name.localeCompare(b.client.name)
+}
+
 async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string }) {
   const summaries = await Promise.all(CLIENTS.map(c => getClientSummary(c, selectedPeriod)))
   const availablePeriods = summaries[0]?.availablePeriods ?? []
+  const ordered = [...summaries].sort(byAttention)
 
   const totals = summaries.reduce(
     (acc, s) => {
@@ -26,6 +41,18 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
 
   const staleCount = summaries.filter(s => s.staleData.meta.isStale || s.staleData.google.isStale).length
+  const alertCount = summaries.filter(s => s.status === 'danger' || s.status === 'warning').length
+
+  const paceCounts = summaries.reduce(
+    (acc, s) => { acc[s.mediaPace.status] += 1; return acc },
+    { on: 0, over: 0, under: 0, unknown: 0 } as Record<PaceStatus, number>
+  )
+  const paceMonitored = paceCounts.on + paceCounts.over + paceCounts.under
+
+  const sectionTitle: CSSProperties = {
+    fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16,
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -46,7 +73,6 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <MonthFilter periods={availablePeriods} selected={selectedPeriod ?? ''} />
             {staleCount > 0 && (
               <span style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -58,47 +84,66 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
                 {staleCount} cliente{staleCount > 1 ? 's' : ''} com dado desatualizado
               </span>
             )}
+            <MonthFilter periods={availablePeriods} selected={selectedPeriod ?? ''} />
           </div>
         </div>
 
         <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 32 }}>
           {/* Portfolio KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-            {[
-              { label: 'Clientes ativos', value: CLIENTS.length.toString() },
-              { label: 'Investimento total', value: fmtBRL(totals.investment) },
-              { label: 'Leads totais', value: totals.leads.toLocaleString('pt-BR') },
-              { label: 'Com alertas', value: `${summaries.filter(s => s.status !== 'ok').length} / ${CLIENTS.length}` },
-            ].map(kpi => (
-              <div key={kpi.label} className="glass" style={{ padding: '18px 20px' }}>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>
-                  {kpi.label}
-                </p>
-                <p style={{ fontSize: 26, fontWeight: 700, color: 'var(--text)', marginTop: 6 }}>{kpi.value}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+            <div className="glass" style={{ padding: '18px 20px' }}>
+              <p style={kpiLabelStyle}>Clientes ativos</p>
+              <p style={kpiValueStyle}>{CLIENTS.length}</p>
+            </div>
+            <div className="glass" style={{ padding: '18px 20px' }}>
+              <p style={kpiLabelStyle}>Investimento total</p>
+              <p style={kpiValueStyle}>{fmtBRL(totals.investment)}</p>
+            </div>
+            <div className="glass" style={{ padding: '18px 20px' }}>
+              <p style={kpiLabelStyle}>Leads totais</p>
+              <p style={kpiValueStyle}>{totals.leads.toLocaleString('pt-BR')}</p>
+            </div>
+            <div className="glass" style={{ padding: '18px 20px' }}>
+              <p style={kpiLabelStyle}>Pace de mídia</p>
+              <p style={kpiValueStyle}>{paceMonitored > 0 ? `${paceCounts.on}/${paceMonitored}` : '—'}</p>
+              <div style={{ display: 'flex', gap: 10, marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--yellow)' }} /> {paceCounts.over} acima
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--red)' }} /> {paceCounts.under} abaixo
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-dim)' }} /> {paceCounts.unknown} sem dado
+                </span>
               </div>
-            ))}
+            </div>
+            <div className="glass" style={{ padding: '18px 20px' }}>
+              <p style={kpiLabelStyle}>Com alertas</p>
+              <p style={kpiValueStyle}>{alertCount} / {CLIENTS.length}</p>
+            </div>
           </div>
 
           {/* Client cards */}
           <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
-              Clientes
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-              {summaries.map(({ client, status, currentMonth, previousMonth, staleData }) => {
+            <p style={sectionTitle}>Clientes · ordenados por prioridade de atenção</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              {ordered.map(({ client, status, currentMonth, previousMonth, staleData, mediaPace }) => {
                 const roasTrend =
                   currentMonth?.roas.value && previousMonth?.roas.value
                     ? ((currentMonth.roas.value - previousMonth.roas.value) / previousMonth.roas.value) * 100
                     : null
+                const isStale = staleData.meta.isStale || staleData.google.isStale
 
                 return (
                   <Link
                     key={client.id}
                     href={`/clients/${client.id}`}
                     className="glass glass-hover"
-                    style={{ padding: 20, textDecoration: 'none', display: 'block' }}
+                    style={{ padding: 20, textDecoration: 'none', display: 'flex', flexDirection: 'column', gap: 14 }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <ClientAvatar name={client.name} color={client.color} size="md" />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -111,18 +156,24 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
                       <StatusBadge status={status} />
                     </div>
 
-                    {(staleData.meta.isStale || staleData.google.isStale) && (
-                      <div style={{
-                        marginBottom: 12, fontSize: 11, color: 'var(--red)',
-                        background: 'rgba(255,59,59,0.08)', borderRadius: 8,
-                        padding: '6px 10px', border: '1px solid rgba(255,59,59,0.2)',
-                      }}>
-                        ⚠ Dado desatualizado — verificar automação
-                      </div>
-                    )}
+                    {/* Badges: pace + staleness */}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <PaceBadge pace={mediaPace} compact />
+                      {isStale && (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          fontSize: 11, fontWeight: 600, color: 'var(--red)',
+                          background: 'rgba(255,59,59,0.08)', border: '1px solid rgba(255,59,59,0.2)',
+                          borderRadius: 20, padding: '3px 9px', whiteSpace: 'nowrap',
+                        }}>
+                          ⚠ Dado desatualizado
+                        </span>
+                      )}
+                    </div>
 
+                    {/* Metrics */}
                     {currentMonth ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
                         {[
                           { label: 'Investimento', val: currentMonth.investment.formatted },
                           { label: 'Leads', val: currentMonth.leads.formatted },
@@ -143,10 +194,15 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
                         ))}
                       </div>
                     ) : (
-                      <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '16px 0' }}>Sem dados este mês</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '16px 0', borderTop: '1px solid var(--border)' }}>Sem dados este mês</p>
                     )}
 
-                    <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 16 }}>Ver detalhes →</p>
+                    {/* Footer */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <span style={{ fontSize: 12, color: 'var(--red)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        Ver detalhes <span aria-hidden>→</span>
+                      </span>
+                    </div>
                   </Link>
                 )
               })}
@@ -155,18 +211,16 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
 
           {/* Comparative table */}
           <div>
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
-              Comparativo
-            </p>
+            <p style={sectionTitle}>Comparativo</p>
             <div className="glass" style={{ overflow: 'hidden' }}>
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Cliente', 'Investimento', 'Leads', 'ROAS', 'CPL', 'Status'].map((h, i) => (
+                    {['Cliente', 'Investimento', 'Leads', 'ROAS', 'CPL', 'Pace de mídia', 'Status'].map((h, i) => (
                       <th key={h} style={{
                         padding: '12px 16px', fontSize: 11, fontWeight: 700,
                         color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em',
-                        textAlign: i === 0 ? 'left' : i === 5 ? 'center' : 'right',
+                        textAlign: i === 0 ? 'left' : i >= 5 ? 'center' : 'right',
                       }}>
                         {h}
                       </th>
@@ -174,7 +228,7 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
                   </tr>
                 </thead>
                 <tbody>
-                  {summaries.map(({ client, status, currentMonth, staleData }) => (
+                  {ordered.map(({ client, status, currentMonth, staleData, mediaPace }) => (
                     <tr key={client.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s' }}>
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -195,6 +249,7 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-muted)' }}>{currentMonth?.cpl.formatted ?? '—'}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}><PaceBadge pace={mediaPace} compact /></td>
                       <td style={{ padding: '12px 16px', textAlign: 'center' }}><StatusBadge status={status} /></td>
                     </tr>
                   ))}
@@ -206,6 +261,13 @@ async function DashboardContent({ selectedPeriod }: { selectedPeriod?: string })
       </main>
     </div>
   )
+}
+
+const kpiLabelStyle: CSSProperties = {
+  fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600,
+}
+const kpiValueStyle: CSSProperties = {
+  fontSize: 26, fontWeight: 700, color: 'var(--text)', marginTop: 6,
 }
 
 export default async function HomePage({
