@@ -20,6 +20,14 @@ export interface Client {
   contact?: string
   since?: string
   links: ClientLinks
+  sheetNames?: {
+    DAILY?: string
+    WEEKLY?: string
+    MONTHLY?: string
+    PROJECTION?: string
+    META_RAW?: string
+    GOOGLE_RAW?: string
+  }
 }
 
 export interface MetricValue {

@@ -29,6 +29,10 @@ export const CLIENTS: Client[] = [
     links: {
       growthPack: 'https://docs.google.com/spreadsheets/d/17kt3sTvXVJmlIP3kL02j_-RdwSNoizIhx53xNMBGU1E',
     },
+    sheetNames: {
+      MONTHLY: '5.0 Acompanhamento Mensal',
+      WEEKLY: '5.1 Acompanhamento Semanal',
+    },
   },
   {
     id: 'nuveto',
@@ -55,6 +59,11 @@ export const CLIENTS: Client[] = [
     color: '#f59e0b',
     links: {
       growthPack: 'https://docs.google.com/spreadsheets/d/1FdXD19caVEiEJxmIrDX4-stAhe18ku-bBxKxAl6E9u4',
+    },
+    sheetNames: {
+      MONTHLY: '5.0 Acompanhamento Mensal',
+      WEEKLY: '5.1 Acompanhamento Semanal',
+      PROJECTION: '1.0 Projeção - Atual Q2',
     },
   },
 ]

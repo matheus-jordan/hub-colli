@@ -37,10 +37,11 @@ function calcStatus(stale: StaleDataInfo, roasValue: number | null): ClientStatu
 }
 
 export async function getClientSummary(client: Client, selectedPeriod?: string): Promise<ClientSummary> {
+  const names = { ...SHEET_NAMES, ...client.sheetNames }
   const [monthlyMetrics, mediaPace, dailyHealth] = await Promise.all([
-    readTransposedMonthly(client.sheetId, SHEET_NAMES.MONTHLY),
-    readMediaPace(client.sheetId, SHEET_NAMES.PROJECTION),
-    readDailyHealth(client.sheetId, SHEET_NAMES.DAILY),
+    readTransposedMonthly(client.sheetId, names.MONTHLY),
+    readMediaPace(client.sheetId, names.PROJECTION),
+    readDailyHealth(client.sheetId, names.DAILY),
   ])
 
   // Usa a aba mensal como fonte de atualização para ambos os canais
@@ -72,10 +73,11 @@ export async function getClientSummary(client: Client, selectedPeriod?: string):
 }
 
 export async function getClientDetail(client: Client, selectedPeriod?: string): Promise<ClientDetail> {
+  const names = { ...SHEET_NAMES, ...client.sheetNames }
   const [summary, channels, weeklyHistory] = await Promise.all([
     getClientSummary(client, selectedPeriod),
-    readTransposedMonthlyChannels(client.sheetId, SHEET_NAMES.MONTHLY),
-    readTransposedWeekly(client.sheetId, SHEET_NAMES.WEEKLY),
+    readTransposedMonthlyChannels(client.sheetId, names.MONTHLY),
+    readTransposedWeekly(client.sheetId, names.WEEKLY),
   ])
 
   return {
